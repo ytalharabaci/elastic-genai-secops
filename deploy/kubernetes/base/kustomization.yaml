@@ -31,6 +31,7 @@ configMapGenerator:
   - name: esm-content
     files:
       - bootstrap.sh=../../../content/bootstrap.sh
+      - beats-pipelines.sh=../../../content/elasticsearch/beats-pipelines.sh
       - ilm-esm-logs.json=../../../content/elasticsearch/ilm/esm-logs.json
       - ct-logs-custom.json=../../../content/elasticsearch/component-templates/logs@custom.json
       - ct-metrics-custom.json=../../../content/elasticsearch/component-templates/metrics@custom.json

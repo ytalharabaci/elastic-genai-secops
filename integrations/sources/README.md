@@ -35,11 +35,27 @@ on bare metal and in containers:
 
 The `logstash_ingest` user and its `logstash_writer` role are created by `content/bootstrap.sh`.
 
-## Windows: load the Winlogbeat ingest pipelines
+## Windows and Palo Alto (Filebeat): ingest pipelines
 
-Winlogbeat 8 parses Security, Sysmon and PowerShell events in Elasticsearch ingest pipelines. When
-Winlogbeat ships through Logstash, those pipelines must be loaded once per Winlogbeat version, from any
-Windows host that can reach Elasticsearch:
+Winlogbeat 8 parses Security, Sysmon and PowerShell events, and the Filebeat `panw` module PAN-OS
+logs, in Elasticsearch ingest pipelines named after the Beat's version (`winlogbeat-8.13.4-routing`,
+`filebeat-8.13.4-panw-panos-pipeline`). Without them events are stored, but fields such as
+`process.name` and `event.category` are missing and the Windows detection rules cannot match.
+
+`content/bootstrap.sh` loads them on every target, the same pipelines `winlogbeat setup --pipelines`
+and `filebeat setup --pipelines --modules panw` would load. It downloads the Beats packages from
+artifacts.elastic.co, checks Elastic's SHA-512 and loads the pipelines; the files are Elastic
+License 2.0 and are not stored in this repository. Pipelines that already exist are kept.
+
+| Setting | Default | Use |
+| --- | --- | --- |
+| `BEATS_VERSIONS` | the Elasticsearch version | Space-separated Beats versions, e.g. `8.13.4 8.14.3` while endpoints are being upgraded; `none` to skip |
+| `BEATS_ARTIFACTS_URL` | `https://artifacts.elastic.co/downloads/beats` | Mirror with the same layout (`winlogbeat/winlogbeat-<v>-windows-x86_64.zip`, `filebeat/filebeat-<v>-linux-x86_64.tar.gz`, each with `.sha512`) for hosts without internet access |
+
+The endpoints install the stack version (`prepare-share.ps1 -ElasticVersion`). After moving them to
+another version, add it to `BEATS_VERSIONS` and run the bootstrap again. If the download fails the
+bootstrap logs a warning and goes on; then load the pipelines by hand from a Windows host that can
+reach Elasticsearch:
 
 ```powershell
 .\winlogbeat.exe setup --pipelines `
@@ -51,8 +67,6 @@ Windows host that can reach Elasticsearch:
 
 On the bare-metal install Elasticsearch listens on localhost only; use an SSH tunnel
 (`ssh -L 9200:localhost:9200 <elk-host>`) and `https://localhost:9200`.
-Without these pipelines events are stored, but fields such as `process.name` and `event.category`
-are missing and the Windows detection rules cannot match.
 
 Sysmon configuration: [`windows/sysmon/sysmon.xml`](windows/sysmon/sysmon.xml).
 
@@ -62,7 +76,7 @@ Sysmon configuration: [`windows/sysmon/sysmon.xml`](windows/sysmon/sysmon.xml).
   logs are parsed into ECS fields; other log types are stored raw.
 - **Filebeat panw module** (complete parsing): PAN-OS sends to rsyslog on a collector host
   (`paloalto/collector/rsyslog-30-paloalto.conf`, UDP 5518), Filebeat reads the file and ships it to 5044.
-  Load the module's ingest pipeline once with `filebeat setup --pipelines --modules panw`.
+  The bootstrap loads the module's ingest pipelines ([above](#windows-and-palo-alto-filebeat-ingest-pipelines)).
 
 ## Test a pipeline
 

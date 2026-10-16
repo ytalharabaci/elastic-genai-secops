@@ -48,7 +48,6 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 - **Kubernetes:** no NetworkPolicies, Ingress or HPA; `detection-service` must stay at one replica.
 - **Snapshots:** off by default outside `gke`; enable them per target (docs/components/elasticsearch.md).
 - **Logstash API** runs without TLS inside Kubernetes (ECK 3.5 + Logstash 8.13 TLS API issue).
-- **Manual steps:** Winlogbeat and Filebeat `panw` ingest pipelines are loaded by hand once per Beats version.
 - **Parsing:** Kaspersky events are stored but not parsed; no web server log source (WEB-* rules ship disabled).
 
 ## Planned features
@@ -59,7 +58,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 - [ ] TLS for Beats inputs and Logstash → Elasticsearch certificate rotation
 - [ ] Kaspersky (CEF/LEEF) parsing; web server sources (nginx, Apache, IIS) to enable the WEB-* rules
 - [ ] More sources: Microsoft 365 / Entra ID, Linux auditd, Cisco ASA, Suricata/Zeek
-- [ ] Automatic loading of Winlogbeat / Filebeat ingest pipelines in the bootstrap
+- [x] Automatic loading of Winlogbeat / Filebeat `panw` ingest pipelines in the bootstrap
 - [ ] Kibana dashboards per source and an ESM overview dashboard
 - [ ] Detection rule tests with sample events in CI
 

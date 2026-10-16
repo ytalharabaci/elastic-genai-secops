@@ -32,6 +32,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Beats ingest pipelines in the bootstrap**: `content/bootstrap.sh` loads the Winlogbeat and
+  Filebeat `panw` ingest pipelines for the stack version (`BEATS_VERSIONS`), downloaded from
+  artifacts.elastic.co (or `BEATS_ARTIFACTS_URL`) and SHA-512 checked, replacing the manual
+  `winlogbeat setup --pipelines` / `filebeat setup --pipelines` step.
 - **On-prem snapshots**: `content/bootstrap.sh` registers repository `esm-snapshots` and SLM policy
   `esm-daily` when `SNAPSHOT_REPOSITORY_TYPE` (`fs` or `s3`) is set. Compose gets `snapshots-fs.yml`
   and `snapshots-s3.yml` (with an `s3-lab` SeaweedFS profile), Kubernetes the optional
