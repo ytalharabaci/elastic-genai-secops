@@ -127,7 +127,8 @@ func validName(name string) bool {
 		return false
 	}
 	for _, c := range name {
-		if c > unicode.MaxASCII || !(unicode.IsLetter(c) || unicode.IsDigit(c) || strings.ContainsRune("._-@", c)) {
+		allowed := unicode.IsLetter(c) || unicode.IsDigit(c) || strings.ContainsRune("._-@", c)
+		if c > unicode.MaxASCII || !allowed {
 			return false
 		}
 	}
