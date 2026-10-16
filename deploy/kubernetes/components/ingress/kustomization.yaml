@@ -1,0 +1,19 @@
+# HTTPS for Kibana, the case API (bff) and the MCP server through an ingress-nginx controller; TLS
+# ends at the ingress (ADR-029). Add it to an overlay under "components:", then replace in this
+# directory:
+#   KIBANA_HOST  e.g. kibana.soc.example.com      API_HOST  e.g. api.soc.example.com
+# and create the certificate Secret for both names before applying:
+#   kubectl -n esm create secret tls esm-ingress-tls --cert=tls.crt --key=tls.key
+# (or let cert-manager issue it: uncomment the annotation in ingress.yaml).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - ingress.yaml
+
+# The MCP server checks the Host header (DNS-rebinding protection): accept the public name
+configMapGenerator:
+  - name: esm-platform-config
+    namespace: esm
+    behavior: merge
+    literals:
+      - MCP_ALLOWED_HOSTS=localhost:*,127.0.0.1:*,mcp-server:*,mcp-server.esm.svc:*,API_HOST,API_HOST:*

@@ -63,7 +63,20 @@ names), so restart workloads after changing them, e.g. `kubectl -n esm rollout r
 | MCP server | `mcp-server:8090` | `kubectl -n esm port-forward svc/mcp-server 8090` |
 
 In `onprem` and `gke` the Logstash Service is a `LoadBalancer`; point firewalls and Beats at its
-external address. Expose Kibana through your ingress controller with TLS.
+external address.
+
+Inside the cluster Kibana, bff and the MCP server speak plain HTTP; TLS ends at the ingress. For an
+ingress-nginx controller add `../../components/ingress` to the overlay's `components:`, replace
+`KIBANA_HOST` and `API_HOST` in that directory, and create the certificate Secret for both names
+(or uncomment the cert-manager annotation):
+
+```bash
+kubectl -n esm create secret tls esm-ingress-tls --cert=tls.crt --key=tls.key
+```
+
+Kibana is then at `https://KIBANA_HOST`, the case API at `https://API_HOST/api` and the MCP endpoint
+at `https://API_HOST/mcp` (both need an analyst token, ADR-028). The component also adds `API_HOST`
+to the MCP server's accepted Host headers and turns off response buffering for its event stream.
 
 ## Overlay notes
 

@@ -41,6 +41,9 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Kubernetes ingress** (`components/ingress`): Kibana on its own host, the case API and the MCP
+  endpoint on an API host, TLS at an ingress-nginx controller (optional cert-manager); the MCP
+  server accepts the public host and streams without proxy buffering.
 - **TLS from the Beats** (ADR-030): the Logstash beats inputs take TLS with `BEATS_TLS=true`; on
   Compose the `certs` service issues the Logstash certificate (PKCS#8 key, `LOGSTASH_TLS_SANS`), and
   `prepare-share.ps1 -CaCert` puts the CA on the deployment share and renders TLS Beats configs
