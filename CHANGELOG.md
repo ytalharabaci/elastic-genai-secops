@@ -17,6 +17,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Changed
 
+- **Dependencies**: Python services build on `python:3.14-slim` and CI tests on 3.14;
+  mcp-server moves to the MCP Python SDK 2.x (`FastMCP` → `MCPServer`, the streamable HTTP
+  options are passed to `streamable_http_app`). The `elasticsearch` client stays on 8.x to match
+  the 8.13 stack; Dependabot ignores its major updates until the stack upgrade.
 - **CI/CD**: one DevSecOps pipeline for the `staging` → `production` flow (ADR-024), sized for the
   project (ADR-026): golangci-lint with gosec, gitleaks, CodeQL, govulncheck, pip-audit, dependency
   review and Trivy IaC on every change; Trivy image scans weekly; the e2e test on promotion PRs.
@@ -33,6 +37,10 @@ SOC prototype and an AI-SOC platform).
   and `snapshots-s3.yml` (with an `s3-lab` SeaweedFS profile), Kubernetes the optional
   `components/snapshots-s3` (ECK `secureSettings`), and the bare-metal installer
   `SNAPSHOT_REPO_PATH`.
+- **Persistent correlation** (ADR-027): alert-gateway keeps open correlation windows in the NATS
+  key-value bucket `esm-correlation` with compare-and-set writes, so windows survive restarts and
+  several replicas can share the `alert-gateway` consumer. A window is closed, published and then
+  deleted; a failed publish is retried by the next ingest or flush instead of losing the alerts.
 - **Snapshot before delete**: with `SNAPSHOT_POLICY` set, `content/bootstrap.sh` adds
   `wait_for_snapshot` to the delete phase of `esm-logs`, so an index leaves the hot tier only after
   that SLM policy has snapshotted it. The `gke` overlay sets `esm-daily`; compose and bare metal

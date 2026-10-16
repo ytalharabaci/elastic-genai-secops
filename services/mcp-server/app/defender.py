@@ -11,7 +11,7 @@ import json
 import platform
 import subprocess
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 _FIELDS = ("AMServiceEnabled", "AntivirusEnabled", "AntispywareEnabled",
            "RealTimeProtectionEnabled", "BehaviorMonitorEnabled", "IoavProtectionEnabled",
@@ -34,7 +34,7 @@ def defender_status() -> dict[str, object]:
     return json.loads(proc.stdout)
 
 
-def register(mcp: FastMCP) -> None:
+def register(mcp: MCPServer) -> None:
     @mcp.tool()
     def get_defender_status() -> str:
         """Microsoft Defender protection and signature status of this Windows machine."""

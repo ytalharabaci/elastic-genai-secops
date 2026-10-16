@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	streamName = "ESM"
-	maxDeliver = 5
+	streamName   = "ESM"
+	streamMaxAge = 7 * 24 * time.Hour
+	maxDeliver   = 5
 )
 
 // NATS is a JetStream-backed Bus. All subjects live in one stream ("ESM", subjects "esm.>").
@@ -45,7 +46,7 @@ func NewNATS(ctx context.Context, url string) (*NATS, error) {
 			Name:       streamName,
 			Subjects:   []string{"esm.>"},
 			Storage:    jetstream.FileStorage,
-			MaxAge:     7 * 24 * time.Hour,
+			MaxAge:     streamMaxAge,
 			Duplicates: 10 * time.Minute,
 		})
 		if err == nil {
@@ -118,6 +119,21 @@ func (n *NATS) Subscribe(ctx context.Context, subject, durable string, h Handler
 	<-ctx.Done()
 	cc.Stop()
 	return ctx.Err()
+}
+
+// KeyValue returns the JetStream key-value bucket name, creating it if needed. Entries expire
+// after the stream's MaxAge, so state is never kept longer than the messages it came from.
+func (n *NATS) KeyValue(ctx context.Context, bucket string) (jetstream.KeyValue, error) {
+	kv, err := n.js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{
+		Bucket:  bucket,
+		History: 1,
+		Storage: jetstream.FileStorage,
+		TTL:     streamMaxAge,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("key-value bucket %s: %w", bucket, err)
+	}
+	return kv, nil
 }
 
 // Close implements Bus.

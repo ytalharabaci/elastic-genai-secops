@@ -259,7 +259,7 @@ docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12
 
 # Secrets, SCA, IaC
 docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact
-docker run --rm -v "$PWD:/src" -w /src golang:1.26-alpine \
+docker run --rm -v "$PWD:/src" -w /src golang:1.27-alpine \
   sh -c 'go install golang.org/x/vuln/cmd/govulncheck@latest && /go/bin/govulncheck ./...'
 docker run --rm -v "$PWD:/repo" aquasec/trivy:0.75.0 config --severity HIGH,CRITICAL /repo
 

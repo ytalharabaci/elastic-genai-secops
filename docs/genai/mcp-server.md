@@ -89,6 +89,6 @@ The tool only reads `Get-MpComputerStatus`; scans and settings are not exposed.
 cd services/mcp-server && python -m pytest -q tests
 # live check with the official MCP client, inside the compose network
 docker run --rm --network esm-siem_default -v "$PWD:/src" -w /src \
-  -e MCP_URL=http://mcp-server:8090/mcp -e MCP_TOKEN=<token> python:3.12-slim \
-  sh -c "pip install -q 'mcp>=1.9,<2' && python tests/e2e/mcp_client_test.py"
+  -e MCP_URL=http://mcp-server:8090/mcp -e MCP_TOKEN=<token> python:3.14-slim \
+  sh -c "pip install -q 'mcp>=2.3,<3' && python tests/e2e/mcp_client_test.py"
 ```
