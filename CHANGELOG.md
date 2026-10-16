@@ -28,6 +28,9 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Kubernetes NetworkPolicies** (`components/network-policies`, in every overlay): ingress is
+  denied unless listed, and nats, detection-service, alert-gateway, masking-service, case-service,
+  bff and mcp-server can reach only pods in the namespace and DNS.
 - **SIEM profile** on three targets: Docker Compose (`deploy/compose/siem.yml`), bare-metal Ubuntu
   22.04 installer, Kubernetes with ECK 3.5 and kustomize (`lab`, `onprem`, `gke` overlays).
 - **Log sources** (`integrations/sources`): Windows (Winlogbeat, WEF, Sysmon), FortiGate, Palo Alto

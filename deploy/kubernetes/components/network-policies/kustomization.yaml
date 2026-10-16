@@ -1,0 +1,10 @@
+# NetworkPolicies for namespace esm: ingress is denied unless listed, and the services that never
+# talk to the outside world may only reach pods in the namespace and DNS. Needs a CNI that enforces
+# NetworkPolicy (Calico, Cilium, GKE Dataplane V2, recent kindnet); others ignore it silently.
+#
+# The ECK operator is expected in namespace elastic-system (the default of operator.yaml).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - ingress.yaml
+  - egress.yaml

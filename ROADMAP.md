@@ -45,7 +45,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 ## Known limitations
 
 - **Transport security:** Kibana, the bff API and Beats → Logstash run without TLS by default.
-- **Kubernetes:** no NetworkPolicies, Ingress or HPA; `alert-gateway` and `detection-service` must stay at one replica.
+- **Kubernetes:** no Ingress or HPA; `alert-gateway` and `detection-service` must stay at one replica.
 - **Correlation state:** open correlation windows live in `alert-gateway` memory and are lost on restart.
 - **ILM** deletes the hot tier without `wait_for_snapshot`.
 - **Logstash API** runs without TLS inside Kubernetes (ECK 3.5 + Logstash 8.13 TLS API issue).
@@ -79,7 +79,8 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 ### Deployment and operations
 
 - [ ] TLS and authentication in front of Kibana, bff and MCP (Ingress / reverse proxy examples)
-- [ ] Kubernetes NetworkPolicies, HPA for stateless services, Helm chart
+- [x] Kubernetes NetworkPolicies: deny-by-default ingress, no outbound access for internal services
+- [ ] HPA for stateless services, Helm chart
 - [ ] Snapshot repository examples for on-prem (S3/MinIO, shared FS) and `wait_for_snapshot` in ILM
 - [ ] Bare-metal installer run in CI on an Ubuntu 22.04 VM; platform services as systemd units
 - [ ] Elastic Stack 8.x upgrade path (8.13 → 8.19) and 9.x evaluation
