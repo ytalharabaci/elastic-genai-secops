@@ -93,9 +93,10 @@ func requireAnalyst(analysts *Analysts, log *slog.Logger, next http.Handler) htt
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+		path := r.URL.Path // the handler rewrites it for case-service; log what the analyst called
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r.WithContext(context.WithValue(r.Context(), analystKey{}, name)))
-		log.Info("analyst request", "analyst", name, "method", r.Method, "path", r.URL.Path, "status", rec.status)
+		log.Info("analyst request", "analyst", name, "method", r.Method, "path", path, "status", rec.status)
 	})
 }
 
