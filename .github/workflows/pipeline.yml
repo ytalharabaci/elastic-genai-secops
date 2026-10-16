@@ -207,6 +207,8 @@ jobs:
       - run: pip install pyyaml
       - name: Detection rules are built from rules.yml
         run: python content/detection-rules/build.py --check
+      - name: Logstash pipelines parse their sample events (tests/pipelines)
+        run: python tests/pipelines/run.py
       - name: Compose files
         run: |
           cd deploy/compose

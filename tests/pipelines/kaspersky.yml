@@ -1,0 +1,88 @@
+# Samples built from the CEF and LEEF layouts in the Kaspersky Security Center documentation
+# (SIEM export). Single-quoted YAML: backslashes are as they appear on the wire.
+pipeline: integrations/sources/kaspersky/logstash.conf
+cases:
+  - name: malware found, CEF behind a syslog header
+    event:
+      # Filebeat adds the collector's own host; the endpoint must win
+      host: {name: ksc-collector, os: {family: windows}}
+      message: '<134>Oct 16 10:15:04 ksc01 CEF:0|KasperskyLab|SecurityCenter|14.2.0.26967|GNRL_EV_VIRUS_FOUND|Malicious object detected|4|msg=Malicious object detected: EICAR-Test-File\nObject: C:\\Users\\alice\\Downloads\\eicar.com rt=1729073704000 dhost=WIN10-01 dst=10.0.0.15 duser=CORP\\alice cs2=KES cs2Label=ProductName cs3=12.4.0.467 cs3Label=ProductVersion cs4=EICAR-Test-File cs4Label=VirusName filePath=C:\\Users\\alice\\Downloads\\eicar.com act=Detected'
+    expect:
+      event.code: GNRL_EV_VIRUS_FOUND
+      event.reason: Malicious object detected
+      event.kind: alert
+      event.category: malware
+      event.severity: 4
+      event.action: Detected
+      '@timestamp': '2024-10-16T10:15:04.000Z'
+      host.name: win10-01
+      host.ip: 10.0.0.15
+      user.name: 'CORP\alice'
+      file.path: 'C:\Users\alice\Downloads\eicar.com'
+      kaspersky.virusname: EICAR-Test-File
+      kaspersky.productname: KES
+      kaspersky.productversion: 12.4.0.467
+      message: "Malicious object detected: EICAR-Test-File\nObject: C:\\Users\\alice\\Downloads\\eicar.com"
+      observer.version: 14.2.0.26967
+      observer.hostname: ksc-collector
+      tags: [kaspersky, av, endpoint]
+
+  - name: object deleted is an event, not an alert
+    event:
+      message: 'CEF:0|KasperskyLab|SecurityCenter|14.2.0.26967|GNRL_EV_OBJECT_DELETED|Object deleted|1|rt=1729073710000 dhost=WIN10-01 cs4=EICAR-Test-File cs4Label=VirusName'
+    expect:
+      event.kind: event
+      event.category: malware
+      event.type: deletion
+      event.outcome: success
+      event.severity: 1
+      kaspersky.virusname: EICAR-Test-File
+
+  - name: escaped pipe in the name and escaped equals in a value
+    event:
+      message: 'CEF:0|KasperskyLab|SecurityCenter|14.2|KLSRV_EVENT_TASK_STATE|Task \| state changed|1|msg=state\=completed dhost=KSC01'
+    expect:
+      event.reason: 'Task | state changed'
+      message: 'state=completed'
+      host.name: ksc01
+      event.kind: event
+
+  - name: network attack, LEEF 1.0 with tabs
+    event:
+      message: "LEEF:1.0|Kaspersky Lab|Kaspersky Security Center|14.2.0.26967|GNRL_EV_ATTACK_DETECTED|devTime=Oct 16 2024 10:20:00\tsev=8\tdhost=SRV-DB01\tdst=10.0.0.20\tsrc=203.0.113.7\tmsg=Network attack detected: Bruteforce.Generic.RDP"
+    expect:
+      event.code: GNRL_EV_ATTACK_DETECTED
+      event.kind: alert
+      event.category: intrusion_detection
+      event.severity: 8
+      '@timestamp': '2024-10-16T10:20:00.000Z'
+      host.name: srv-db01
+      source.ip: 203.0.113.7
+      message: 'Network attack detected: Bruteforce.Generic.RDP'
+
+  - name: LEEF 2.0 with a custom delimiter
+    event:
+      message: 'LEEF:2.0|Kaspersky Lab|Kaspersky Security Center|14.2|GNRL_EV_OBJECT_NOT_CURED|^|sev=6^dhost=WIN10-02^duser=bob^fname=invoice.exe'
+    expect:
+      event.kind: alert
+      event.category: malware
+      event.severity: 6
+      host.name: win10-02
+      user.name: bob
+      file.name: invoice.exe
+
+  - name: anything else is kept raw and tagged
+    event:
+      message: 'Oct 16 10:00:00 ksc01 klserver: service started'
+    expect:
+      message: 'Oct 16 10:00:00 ksc01 klserver: service started'
+      tags: [kaspersky, av, endpoint, kaspersky_unparsed]
+    absent: [event.kind, event.code]
+
+  - name: no endpoint in the record leaves no host behind
+    event:
+      host: {name: ksc-collector}
+      message: 'CEF:0|KasperskyLab|SecurityCenter|14.2|KLSRV_EVENT_TASK_STATE|Task state changed|1|msg=done'
+    expect:
+      observer.hostname: ksc-collector
+    absent: [host]

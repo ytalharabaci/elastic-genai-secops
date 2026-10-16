@@ -30,7 +30,7 @@ flowchart TB
     end
 
     subgraph SIEM["2 · SIEM · Elastic Stack, Basic license"]
-        LS[Logstash] --> ES[(Elasticsearch)] --> KB["Kibana<br/>30 detection rules"]
+        LS[Logstash] --> ES[(Elasticsearch)] --> KB["Kibana<br/>31 detection rules"]
     end
 
     subgraph AI["3 · AI triage platform · NATS JetStream"]
