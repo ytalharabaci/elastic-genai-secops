@@ -9,12 +9,13 @@
 #   enabled (default true), mitre: [{technique, name, tactic}], false_positives, playbook, references
 #
 # Index patterns follow the data streams written by integrations/sources:
-#   logs-windows-*, logs-fortigate-*, logs-paloalto-*
+#   logs-windows-*, logs-fortigate-*, logs-paloalto-*, logs-kaspersky-*
 # WEB-* rules expect web server logs (Elastic Agent nginx/apache/iis integrations or Filebeat);
 # no web source ships with this repository yet, so they are disabled by default.
 
 windows_index: &windows ["logs-windows-*"]
 firewall_index: &firewall ["logs-fortigate-*", "logs-paloalto-*"]
+kaspersky_index: &kaspersky ["logs-kaspersky-*"]
 web_index: &web ["logs-nginx.access-*", "logs-apache.access-*", "logs-iis.access-*", "filebeat-*"]
 
 rules:
@@ -378,6 +379,25 @@ rules:
       - Identify the internal host and the destination.
       - Add an egress deny rule for these ports if one is missing.
       - Investigate the host if the connection was not expected.
+
+  - id: KAS-001
+    name: Kaspersky detected malware or a network attack
+    description: Kaspersky Security Center reported a malicious or suspicious object, an object it could not disinfect, a virus outbreak or a network attack on a managed host.
+    severity: high
+    index: *kaspersky
+    query: |-
+      event.module: "kaspersky" and event.kind: "alert" and
+      event.code: ("GNRL_EV_VIRUS_FOUND" or "GNRL_EV_SUSPICIOUS_OBJECT_FOUND" or "GNRL_EV_OBJECT_NOT_CURED" or "GNRL_EV_VIRUS_OUTBREAK" or "GNRL_EV_ATTACK_DETECTED")
+    mitre:
+      - {technique: T1204, name: User Execution, tactic: execution}
+    false_positives:
+      - Test files (EICAR) and penetration tests.
+      - Archives or installers flagged as potentially unwanted software.
+    playbook:
+      - Read the detection in kaspersky.* (threat name, file path, action taken) and check whether Kaspersky removed the object.
+      - If it was not cured or removed, isolate the host and run a full scan.
+      - Find how the file arrived (download, mail attachment, removable media) and whether other hosts received it.
+      - For network attacks, check the source address on the firewall and block it if it is external.
 
   - id: WEB-001
     name: Large HTTP POST request (possible exfiltration)

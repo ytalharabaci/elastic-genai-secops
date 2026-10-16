@@ -23,7 +23,7 @@ metal) or ECK.
 
 ## Detection rules
 
-The 30 rules in `content/detection-rules/rules.yml` are built into `rules.ndjson` and imported by
+The 31 rules in `content/detection-rules/rules.yml` are built into `rules.ndjson` and imported by
 `content/bootstrap.sh` with `overwrite=true`. 21 are enabled; the 9 `WEB-*` rules are disabled
 because no web server log source ships yet.
 
