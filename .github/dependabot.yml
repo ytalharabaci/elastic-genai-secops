@@ -13,6 +13,11 @@ updates:
     target-branch: staging
     schedule: { interval: weekly }
     cooldown: { default-days: 3 }   # let a new release settle before it is proposed
+    ignore:
+      # The client major must match the stack (8.13); a 9.x client is rejected by 8.x servers.
+      # Lift together with the Elastic Stack 9.x upgrade (ROADMAP.md).
+      - dependency-name: elasticsearch
+        update-types: [version-update:semver-major]
     groups:
       python-minor-patch: { update-types: [minor, patch] }
   - package-ecosystem: docker

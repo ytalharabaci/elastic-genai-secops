@@ -80,6 +80,8 @@ done
 
 **onprem** pulls `ghcr.io/yusufarbc/elastic-genai-secops/<service>:latest` (published by CI from
 `production`). Set your StorageClass with the commented patch in `overlays/onprem/kustomization.yaml`.
+For snapshots to S3-compatible storage, enable `components/snapshots-s3` there
+([snapshots](../components/elasticsearch.md#snapshots)).
 
 **gke** before applying:
 
@@ -98,6 +100,8 @@ done
 
 3. The `esm-gcs-snapshots` Job registers repository `esm-gcs` and the daily policy `esm-daily`
    (`SNAPSHOT_EXPIRE_AFTER`, default 730 days, is the regulatory retention; the hot tier keeps 14 days).
+   The overlay sets `SNAPSHOT_POLICY=esm-daily`, so ILM deletes an index from the hot tier only
+   after `esm-daily` has snapshotted it; the bootstrap Job waits for this Job to create the policy.
 
 ## LLM provider
 
@@ -107,6 +111,7 @@ Edit `LLM_PROVIDER`, `LLM_MODEL_ID` and `LLM_BASE_URL` in the `esm-platform-conf
 
 ## Limits
 
-- `alert-gateway` and `detection-service` must run with one replica (in-memory correlation, single checkpoint).
+- `detection-service` must run with one replica (it owns the alert checkpoint). `alert-gateway` can
+  scale out: its correlation windows are in the NATS bucket `esm-correlation` (ADR-027).
 - No NetworkPolicies yet; restrict access to `masking-service` before production.
 - No Fleet / Elastic Agent resources yet (planned).

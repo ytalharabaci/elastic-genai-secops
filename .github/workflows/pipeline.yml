@@ -41,8 +41,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  GO_VERSION: "1.26"
-  PYTHON_VERSION: "3.12"
+  GO_VERSION: "1.27"
+  PYTHON_VERSION: "3.14"
   LLM_PROVIDER: mock
   TRIVY_VERSION: v0.75.0
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/elastic-genai-secops
@@ -84,6 +84,14 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true   # latest patch of GO_VERSION, not the runner cache (stdlib CVEs)
+      - name: Go version matches the images
+        # Dependabot bumps the golang base image; CI must test with the toolchain that builds it
+        run: |
+          images="$(grep -h '^FROM golang:' services/*/Dockerfile | awk '{print $2}' | sort -u)"
+          if [ "$images" != "golang:${GO_VERSION}-alpine" ]; then
+            echo "::error::GO_VERSION=${GO_VERSION} but the Dockerfiles use: ${images//$'\n'/ }"
+            exit 1
+          fi
       - name: gofmt
         run: test -z "$(gofmt -l libs services)" || (gofmt -l libs services; exit 1)
       - name: go vet
@@ -230,8 +238,12 @@ jobs:
                   p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps(s))
           EOF
           go install github.com/yannh/kubeconform/cmd/kubeconform@v0.6.7
-          for o in lab onprem gke; do
-            sh deploy/kubernetes/init-secrets.sh "$o"
+          # Optional components are checked on top of the overlay they are meant for
+          mkdir -p deploy/kubernetes/overlays/onprem-snapshots-s3
+          printf 'resources: [../onprem]\ncomponents: [../../components/snapshots-s3]\n' \
+            > deploy/kubernetes/overlays/onprem-snapshots-s3/kustomization.yaml
+          for o in lab onprem gke onprem-snapshots-s3; do
+            [ "$o" = onprem-snapshots-s3 ] || sh deploy/kubernetes/init-secrets.sh "$o"   # uses onprem's
             kubectl kustomize --load-restrictor LoadRestrictionsNone "deploy/kubernetes/overlays/$o" \
               | "$(go env GOPATH)/bin/kubeconform" -strict -summary -kubernetes-version 1.31.0 \
                   -schema-location default \
@@ -438,7 +450,7 @@ jobs:
         run: python3 tests/e2e/pipeline_test.py
       - name: MCP server test (read-only, masked)
         run: |
-          python3 -m venv /tmp/mcp && /tmp/mcp/bin/pip install -q 'mcp>=1.9,<2'
+          python3 -m venv /tmp/mcp && /tmp/mcp/bin/pip install -q 'mcp>=2.3,<3'
           MCP_TOKEN="$(grep '^MCP_TOKEN=' deploy/compose/.env | cut -d= -f2-)" \
             MCP_URL=http://localhost:8090/mcp /tmp/mcp/bin/python tests/e2e/mcp_client_test.py
       - name: Collect stack logs

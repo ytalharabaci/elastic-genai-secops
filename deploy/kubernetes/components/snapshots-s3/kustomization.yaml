@@ -1,0 +1,40 @@
+# Snapshots to S3-compatible object storage (MinIO, Ceph RGW, SeaweedFS, AWS S3) for clusters
+# outside GCP: the bootstrap Job registers repository esm-snapshots and the daily SLM policy
+# esm-daily, and ILM deletes an index only after it has been snapshotted.
+#
+# Add it to an overlay (e.g. onprem) under "components:", then replace in this file:
+#   S3_ENDPOINT  host[:port] of the object storage     S3_BUCKET  an existing bucket
+# and create the credentials before applying (ECK loads them into the keystore):
+#   kubectl -n esm create secret generic esm-snapshot-s3 \
+#     --from-literal=s3.client.default.access_key=<key> \
+#     --from-literal=s3.client.default.secret_key=<secret>
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+configMapGenerator:
+  - name: esm-siem-config
+    namespace: esm
+    behavior: merge
+    literals:
+      - SNAPSHOT_REPOSITORY_TYPE=s3
+      - 'SNAPSHOT_REPOSITORY_SETTINGS={"bucket": "S3_BUCKET", "base_path": "esm"}'
+      - SNAPSHOT_POLICY=esm-daily
+      - SNAPSHOT_EXPIRE_AFTER=730d   # regulatory retention of the snapshots, not the hot tier
+
+patches:
+  - target: { kind: Elasticsearch, name: esm }
+    patch: |-
+      - op: add
+        path: /spec/secureSettings
+        value:
+          - secretName: esm-snapshot-s3
+      - op: add
+        path: /spec/nodeSets/0/config/s3.client.default.endpoint
+        value: S3_ENDPOINT
+      - op: add
+        path: /spec/nodeSets/0/config/s3.client.default.protocol
+        value: https
+      # MinIO, Ceph and SeaweedFS serve buckets on the path; AWS S3 works either way
+      - op: add
+        path: /spec/nodeSets/0/config/s3.client.default.path_style_access
+        value: true
