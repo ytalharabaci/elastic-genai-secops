@@ -7,3 +7,6 @@ metricbeat.modules:
 output.logstash:
   hosts: ["ELK_SERVER_IP:5046"]
   ssl.enabled: false
+  # TLS (Logstash with BEATS_TLS=true): prepare-share.ps1 -CaCert sets these for you
+  #ssl.enabled: true
+  #ssl.certificate_authorities: ["C:/ProgramData/Elastic/Beats/esm-ca.crt"]

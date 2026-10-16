@@ -35,6 +35,7 @@ Format per entry: **Decision · Status · Date · Context · Alternatives · Rat
 | [ADR-027](027-persistent-correlation-windows.md) | Correlation windows in NATS KV, shared by alert-gateway replicas |
 | [ADR-028](028-analyst-tokens.md) | Analyst tokens for the case API and the MCP server |
 | [ADR-029](029-compose-https.md) | HTTPS for Kibana, bff and the MCP server on Docker Compose |
+| [ADR-030](030-beats-tls.md) | TLS from the Beats to Logstash, opt-in per site |
 
 ## Open items to resolve (carry forward)
 

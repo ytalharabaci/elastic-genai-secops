@@ -44,6 +44,9 @@ spec:
             - name: ES_PW
               valueFrom: { secretKeyRef: { name: esm-secrets, key: LOGSTASH_INGEST_PASSWORD } }
             - { name: ES_CA_CERT, value: /etc/esm/es-ca/ca.crt }
+            # Beats TLS is off here (BEATS_TLS unset); Logstash still checks these paths exist
+            - { name: BEATS_TLS_CERT, value: /etc/esm/es-ca/ca.crt }
+            - { name: BEATS_TLS_KEY, value: /etc/esm/es-ca/ca.crt }
             - { name: LS_SOURCES_DIR, value: /etc/logstash/conf.d }
             - { name: LS_JAVA_OPTS, value: "-Xms512m -Xmx512m" }
             - name: ES_NAMESPACE

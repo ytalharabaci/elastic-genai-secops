@@ -10,6 +10,8 @@ SOC prototype and an AI-SOC platform).
 
 ### Fixed
 
+- `prepare-share.ps1` always failed with "SHA-512 mismatch" in Windows PowerShell 5.1, which returns
+  the `.sha512` file (`binary/octet-stream`) as bytes.
 - Python services could not reach Elasticsearch after the move to Python 3.14: its default
   `VERIFY_X509_STRICT` rejects the `elasticsearch-certutil` CA (no keyUsage extension). masking-service,
   llm-orchestrator and mcp-server clear that flag for the configured CA only; chain, expiry and host
@@ -36,6 +38,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **TLS from the Beats** (ADR-030): the Logstash beats inputs take TLS with `BEATS_TLS=true`; on
+  Compose the `certs` service issues the Logstash certificate (PKCS#8 key, `LOGSTASH_TLS_SANS`), and
+  `prepare-share.ps1 -CaCert` puts the CA on the deployment share and renders TLS Beats configs
+  that the GPO startup scripts install with the CA.
 - **HTTPS on Compose** (ADR-029): Kibana, bff and the MCP server serve HTTPS with certificates from
   the stack's CA, which the `certs` service adds to existing volumes; new CAs carry keyUsage so
   Python 3.13+ clients accept them. bff and the MCP server take `TLS_CERT_FILE`/`TLS_KEY_FILE` and
