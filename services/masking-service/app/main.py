@@ -23,6 +23,7 @@ from contextlib import asynccontextmanager
 import structlog
 import uvicorn
 from elasticsearch import AsyncElasticsearch
+from esm_common.tls import ca_context
 from fastapi import FastAPI, Response
 
 from app.masker import ElasticsearchMasker
@@ -45,7 +46,7 @@ def _build_es() -> AsyncElasticsearch:
         "basic_auth": (os.getenv("ELASTIC_USER", "elastic"), os.getenv("ELASTIC_PASSWORD", "")),
     }
     if ca := os.getenv("ELASTIC_CA_CERTS"):
-        kwargs["ca_certs"] = ca
+        kwargs["ssl_context"] = ca_context(ca)
     return AsyncElasticsearch(**kwargs)
 
 
