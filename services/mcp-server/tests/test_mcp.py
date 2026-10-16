@@ -48,9 +48,7 @@ class FakeES:
 
 
 def text(result) -> str:  # type: ignore[no-untyped-def]
-    """call_tool returns content blocks (or (blocks, structured) on newer SDKs)."""
-    blocks = result[0] if isinstance(result, tuple) else result
-    return blocks[0].text
+    return result.content[0].text
 
 
 async def test_case_view_is_masked_and_hides_notes() -> None:

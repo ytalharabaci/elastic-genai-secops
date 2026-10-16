@@ -36,17 +36,17 @@ def http_app(token: str):  # type: ignore[no-untyped-def]
         raise SystemExit("MCP_TOKEN must be set to a random value of at least 24 characters")
     from mcp.server.transport_security import TransportSecuritySettings
 
-    mcp = server_from_env()
-    mcp.settings.stateless_http = True
     # DNS-rebinding protection stays on; list the Host values clients use (host:port, * = any)
     allowed = os.getenv("MCP_ALLOWED_HOSTS", "localhost:*,127.0.0.1:*")
     hosts = [h.strip() for h in allowed.split(",") if h.strip()]
-    mcp.settings.transport_security = TransportSecuritySettings(
-        enable_dns_rebinding_protection=True,
-        allowed_hosts=hosts,
-        allowed_origins=[f"http://{h}" for h in hosts] + [f"https://{h}" for h in hosts],
+    app = server_from_env().streamable_http_app(
+        stateless_http=True,
+        transport_security=TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=hosts,
+            allowed_origins=[f"http://{h}" for h in hosts] + [f"https://{h}" for h in hosts],
+        ),
     )
-    app = mcp.streamable_http_app()
     app.add_middleware(BearerAuth, token=token)
     return app
 

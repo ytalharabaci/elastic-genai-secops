@@ -1,5 +1,5 @@
 # Build from the repository root: docker build -f services/mcp-server/Dockerfile .
-FROM python:3.12-slim
+FROM python:3.14-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     HUNTS_FILE=/app/content/hunting/hunts.yml MCP_TRANSPORT=http
 WORKDIR /app

@@ -9,7 +9,7 @@ requires-python = ">=3.12"
 dependencies = [
     "esm-common",
     "httpx>=0.28.1",
-    "pydantic>=2.7",
+    "pydantic>=2.14.1",
     "structlog>=26.1.0",
 ]
 

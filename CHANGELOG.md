@@ -17,6 +17,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Changed
 
+- **Dependencies**: Python services build on `python:3.14-slim` and CI tests on 3.14;
+  mcp-server moves to the MCP Python SDK 2.x (`FastMCP` → `MCPServer`, the streamable HTTP
+  options are passed to `streamable_http_app`). The `elasticsearch` client stays on 8.x to match
+  the 8.13 stack; Dependabot ignores its major updates until the stack upgrade.
 - **CI/CD**: one DevSecOps pipeline for the `staging` → `production` flow (ADR-024), sized for the
   project (ADR-026): golangci-lint with gosec, gitleaks, CodeQL, govulncheck, pip-audit, dependency
   review and Trivy IaC on every change; Trivy image scans weekly; the e2e test on promotion PRs.
