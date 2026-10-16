@@ -12,6 +12,7 @@
 # Settings (environment variables):
 #   ELASTIC_VERSION  Elastic Stack version to install and hold   (default 8.13.4)
 #   RETENTION_DAYS   delete logs/metrics after N days             (default 90)
+#   SNAPSHOT_POLICY  existing SLM policy to wait for before delete (default none)
 #   KIBANA_BIND      interface Kibana listens on                  (default 0.0.0.0)
 #   ES_NAMESPACE     data stream namespace                        (default default)
 #   FORTIGATE_TZ     time zone of FortiGate clocks, e.g. Europe/Istanbul   (default UTC)
@@ -22,6 +23,7 @@ set -Eeuo pipefail
 
 ELASTIC_VERSION="${ELASTIC_VERSION:-8.13.4}"
 RETENTION_DAYS="${RETENTION_DAYS:-90}"
+SNAPSHOT_POLICY="${SNAPSHOT_POLICY:-}"
 KIBANA_BIND="${KIBANA_BIND:-0.0.0.0}"
 ES_NAMESPACE="${ES_NAMESPACE:-default}"
 FORTIGATE_TZ="${FORTIGATE_TZ:-UTC}"
@@ -221,7 +223,7 @@ curl -sS -f --cacert "${ES_CA_CRT}" -u "elastic:${ELASTIC_PASSWORD}" -H 'Content
 
 info "loading ILM, templates, roles and the logstash_ingest user"
 ES_URL="${ES_URL}" ES_PASSWORD="${ELASTIC_PASSWORD}" ES_CA_CERT="${ES_CA_CRT}" RETENTION_DAYS="${RETENTION_DAYS}" \
-  LOGSTASH_INGEST_PASSWORD="${LOGSTASH_INGEST_PASSWORD}" bash "${CONTENT_DIR}/bootstrap.sh"
+  SNAPSHOT_POLICY="${SNAPSHOT_POLICY}" LOGSTASH_INGEST_PASSWORD="${LOGSTASH_INGEST_PASSWORD}" bash "${CONTENT_DIR}/bootstrap.sh"
 
 ########################################
 step "8/9 Keystores, start Kibana and Logstash"
@@ -248,7 +250,7 @@ systemctl restart kibana logstash
 ########################################
 step "9/9 Detection rules"
 ES_URL="${ES_URL}" ES_PASSWORD="${ELASTIC_PASSWORD}" ES_CA_CERT="${ES_CA_CRT}" RETENTION_DAYS="${RETENTION_DAYS}" \
-  KIBANA_URL="http://127.0.0.1:5601" bash "${CONTENT_DIR}/bootstrap.sh"
+  SNAPSHOT_POLICY="${SNAPSHOT_POLICY}" KIBANA_URL="http://127.0.0.1:5601" bash "${CONTENT_DIR}/bootstrap.sh"
 
 cat <<EOF
 

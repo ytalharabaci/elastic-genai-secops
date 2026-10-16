@@ -98,6 +98,8 @@ done
 
 3. The `esm-gcs-snapshots` Job registers repository `esm-gcs` and the daily policy `esm-daily`
    (`SNAPSHOT_EXPIRE_AFTER`, default 730 days, is the regulatory retention; the hot tier keeps 14 days).
+   The overlay sets `SNAPSHOT_POLICY=esm-daily`, so ILM deletes an index from the hot tier only
+   after `esm-daily` has snapshotted it; the bootstrap Job waits for this Job to create the policy.
 
 ## LLM provider
 
