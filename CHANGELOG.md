@@ -32,6 +32,11 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **On-prem snapshots**: `content/bootstrap.sh` registers repository `esm-snapshots` and SLM policy
+  `esm-daily` when `SNAPSHOT_REPOSITORY_TYPE` (`fs` or `s3`) is set. Compose gets `snapshots-fs.yml`
+  and `snapshots-s3.yml` (with an `s3-lab` SeaweedFS profile), Kubernetes the optional
+  `components/snapshots-s3` (ECK `secureSettings`), and the bare-metal installer
+  `SNAPSHOT_REPO_PATH`.
 - **Persistent correlation** (ADR-027): alert-gateway keeps open correlation windows in the NATS
   key-value bucket `esm-correlation` with compare-and-set writes, so windows survive restarts and
   several replicas can share the `alert-gateway` consumer. A window is closed, published and then

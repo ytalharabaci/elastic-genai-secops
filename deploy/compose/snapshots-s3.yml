@@ -1,0 +1,82 @@
+# Snapshots to S3-compatible object storage (MinIO, Ceph RGW, SeaweedFS, AWS S3): repository
+# esm-snapshots, daily SLM policy esm-daily, and ILM deletes an index only after it has been
+# snapshotted (docs/components/elasticsearch.md#snapshots). Set in .env:
+#   S3_ENDPOINT, S3_PROTOCOL, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY
+#
+#   docker compose -f siem.yml -f snapshots-s3.yml up -d
+#
+# Without your own object storage, the "s3-lab" profile adds a single-node SeaweedFS (the default
+# S3_ENDPOINT) and creates the bucket. It runs on the same host, so it is for trying this out:
+#
+#   docker compose -f siem.yml -f snapshots-s3.yml --profile s3-lab up -d
+
+x-s3-env: &s3-env
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY in .env}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?set S3_SECRET_KEY in .env}
+
+services:
+  elasticsearch:
+    environment:
+      s3.client.default.endpoint: ${S3_ENDPOINT:-seaweedfs:8333}
+      s3.client.default.protocol: ${S3_PROTOCOL:-http}
+      s3.client.default.path_style_access: "true"
+      <<: *s3-env
+    # S3 credentials are secure settings: put them in the keystore, then start as the image does.
+    # They stay visible in the container config (docker inspect), like ELASTIC_PASSWORD.
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        set -e
+        [ -f config/elasticsearch.keystore ] || bin/elasticsearch-keystore create
+        printf '%s' "$${S3_ACCESS_KEY}" | bin/elasticsearch-keystore add -f -x s3.client.default.access_key
+        printf '%s' "$${S3_SECRET_KEY}" | bin/elasticsearch-keystore add -f -x s3.client.default.secret_key
+        unset S3_ACCESS_KEY S3_SECRET_KEY
+        exec /bin/tini -- /usr/local/bin/docker-entrypoint.sh eswrapper
+
+  es-bootstrap:
+    depends_on:
+      s3-bucket: { condition: service_completed_successfully, required: false }
+    environment: &snapshot-env
+      - SNAPSHOT_REPOSITORY_TYPE=s3
+      - 'SNAPSHOT_REPOSITORY_SETTINGS={"bucket": "${S3_BUCKET:-esm-snapshots}", "base_path": "esm"}'
+      - SNAPSHOT_POLICY=${SNAPSHOT_POLICY:-esm-daily}
+      - SNAPSHOT_SCHEDULE=${SNAPSHOT_SCHEDULE:-0 30 1 * * ?}
+      - SNAPSHOT_EXPIRE_AFTER=${SNAPSHOT_EXPIRE_AFTER:-730d}
+
+  rules:
+    environment: *snapshot-env
+
+  # --- profile s3-lab: local S3 endpoint for trying this out --------------------------------
+  seaweedfs:
+    profiles: [s3-lab]
+    image: chrislusf/seaweedfs:3.97
+    environment: *s3-env
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        printf '{"identities":[{"name":"esm","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' \
+          "$${S3_ACCESS_KEY}" "$${S3_SECRET_KEY}" > /tmp/s3.json
+        exec weed server -ip=seaweedfs -ip.bind=0.0.0.0 -dir=/data -s3 -s3.config=/tmp/s3.json
+    volumes:
+      - s3data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8333/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  s3-bucket:
+    profiles: [s3-lab]
+    image: chrislusf/seaweedfs:3.97
+    depends_on:
+      seaweedfs: { condition: service_healthy }
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "s3.bucket.create -name ${S3_BUCKET:-esm-snapshots}" | weed shell -master=seaweedfs:9333 2>&1 \
+          | grep -v 'already exist' || true
+        echo "s3.bucket.list" | weed shell -master=seaweedfs:9333 | grep -q "${S3_BUCKET:-esm-snapshots}"
+
+volumes:
+  s3data:

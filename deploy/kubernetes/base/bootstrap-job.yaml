@@ -29,8 +29,17 @@ spec:
             - { name: KIBANA_URL, value: "http://esm-kb-http:5601" }
             - name: RETENTION_DAYS
               valueFrom: { configMapKeyRef: { name: esm-siem-config, key: RETENTION_DAYS } }
-            - name: SNAPSHOT_POLICY   # set by overlays that register an SLM policy (gke)
+            # Snapshot settings come from overlays and components (gke, components/snapshots-s3)
+            - name: SNAPSHOT_POLICY
               valueFrom: { configMapKeyRef: { name: esm-siem-config, key: SNAPSHOT_POLICY, optional: true } }
+            - name: SNAPSHOT_REPOSITORY_TYPE
+              valueFrom: { configMapKeyRef: { name: esm-siem-config, key: SNAPSHOT_REPOSITORY_TYPE, optional: true } }
+            - name: SNAPSHOT_REPOSITORY_SETTINGS
+              valueFrom: { configMapKeyRef: { name: esm-siem-config, key: SNAPSHOT_REPOSITORY_SETTINGS, optional: true } }
+            - name: SNAPSHOT_SCHEDULE
+              valueFrom: { configMapKeyRef: { name: esm-siem-config, key: SNAPSHOT_SCHEDULE, optional: true } }
+            - name: SNAPSHOT_EXPIRE_AFTER
+              valueFrom: { configMapKeyRef: { name: esm-siem-config, key: SNAPSHOT_EXPIRE_AFTER, optional: true } }
             - name: LOGSTASH_INGEST_PASSWORD
               valueFrom: { secretKeyRef: { name: esm-secrets, key: LOGSTASH_INGEST_PASSWORD } }
             - name: ESM_PLATFORM_PASSWORD

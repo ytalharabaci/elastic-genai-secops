@@ -13,6 +13,8 @@ resources:
 components:
   - ../../components/platform
   - ../../components/production
+  # Snapshots to S3/MinIO; ILM then deletes only snapshotted indices (see the component's header)
+  # - ../../components/snapshots-s3
 
 secretGenerator:
   - name: esm-secrets
