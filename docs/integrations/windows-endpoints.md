@@ -19,8 +19,15 @@ On any Windows machine with internet access (PowerShell 5.1+):
     -ElkServer 10.0.0.20 `
     -DomainController 10.0.0.10 `
     -ElasticVersion 8.13.4 `
+    -CaCert .\esm-ca.crt `
     -OutputPath C:\elk
 ```
+
+`-CaCert` (optional) turns on TLS to Logstash: copy the stack's CA out first
+(`docker compose -f siem.yml cp elasticsearch:/usr/share/elasticsearch/config/certs/ca/ca.crt esm-ca.crt`)
+and run Logstash with `BEATS_TLS=true` and `-ElkServer` in `LOGSTASH_TLS_SANS`
+([TLS from the Beats](../../integrations/sources/README.md#tls-from-the-beats)). The startup scripts
+copy the CA to `C:\ProgramData\Elastic\Beats\esm-ca.crt` and restart a Beat when it changes.
 
 The script:
 
@@ -89,8 +96,9 @@ roll out another `-ElasticVersion`, add it to `BEATS_VERSIONS` and rerun the boo
 
 ## Notes
 
-- Beats talk to Logstash on ports 5045 (Winlogbeat) and 5046 (Metricbeat, Heartbeat) without TLS.
-  Keep these ports reachable only from your client networks until TLS inputs are added (see ROADMAP).
+- Beats talk to Logstash on ports 5045 (Winlogbeat) and 5046 (Metricbeat, Heartbeat), with TLS when
+  the share was built with `-CaCert`. Without it, keep these ports reachable only from your client
+  networks.
 - A Windows Event Collector (WEF) can run Winlogbeat with the `ForwardedEvents` channel instead of
   installing it on every endpoint; see the comment in `integrations/sources/windows/winlogbeat.yml`.
 - The Sysinternals license applies to Sysmon; it is downloaded, not redistributed.

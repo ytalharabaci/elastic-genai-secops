@@ -1,8 +1,7 @@
 # Winlogbeat configuration for Windows endpoints (deployed by deploy/endpoints/windows/gpo/winlogbeat.bat)
 # Replace ELK_SERVER_IP with the Logstash host. Winlogbeat must be the same version as the Elastic Stack.
-#
-# Before the first events arrive, load Winlogbeat's ingest pipelines once (see integrations/sources/README.md):
-#   winlogbeat.exe setup --pipelines -E output.logstash.enabled=false -E output.elasticsearch.hosts=[...]
+# The SIEM bootstrap loads Winlogbeat's ingest pipelines for the stack version
+# (integrations/sources/README.md#windows-and-palo-alto-filebeat-ingest-pipelines).
 
 winlogbeat.event_logs:
   - name: Security
@@ -26,3 +25,6 @@ winlogbeat.event_logs:
 output.logstash:
   hosts: ["ELK_SERVER_IP:5045"]
   ssl.enabled: false
+  # TLS (Logstash with BEATS_TLS=true): prepare-share.ps1 -CaCert sets these for you
+  #ssl.enabled: true
+  #ssl.certificate_authorities: ["C:/ProgramData/Elastic/Beats/esm-ca.crt"]

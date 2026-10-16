@@ -9,10 +9,16 @@ spec:
   count: 1
   pipelinesRef:
     secretName: esm-logstash-pipelines
+  config:
+    # The default is one worker per CPU the pod sees, i.e. every core of the node: 24 cores gave 7
+    # pipelines 168 workers, 400+ threads and a 1 GiB container at its limit. These sources are
+    # light; raise it for a busy pipeline in pipelines.yml.
+    pipeline.workers: 2
   services:
     # Monitoring API (port 9600), used by ECK's readiness probe and only reachable in the cluster.
-    # Plain HTTP: with ECK 3.5 the TLS-enabled API of Logstash 8.13 answers every request with an
-    # empty reply, so the pod never becomes ready.
+    # Plain HTTP: with ECK 3.5 the TLS-enabled API of Logstash 8.13 answered every request with an
+    # empty reply. The same symptom also shows with plain HTTP on about one start in four (see the
+    # liveness probe below), so TLS may be worth another try.
     - name: api
       tls:
         selfSignedCertificate:
@@ -44,6 +50,9 @@ spec:
             - name: ES_PW
               valueFrom: { secretKeyRef: { name: esm-secrets, key: LOGSTASH_INGEST_PASSWORD } }
             - { name: ES_CA_CERT, value: /etc/esm/es-ca/ca.crt }
+            # Beats TLS is off here (BEATS_TLS unset); Logstash still checks these paths exist
+            - { name: BEATS_TLS_CERT, value: /etc/esm/es-ca/ca.crt }
+            - { name: BEATS_TLS_KEY, value: /etc/esm/es-ca/ca.crt }
             - { name: LS_SOURCES_DIR, value: /etc/logstash/conf.d }
             - { name: LS_JAVA_OPTS, value: "-Xms512m -Xmx512m" }
             - name: ES_NAMESPACE
@@ -55,6 +64,15 @@ spec:
           resources:
             requests: { cpu: 250m, memory: 1Gi }
             limits: { memory: 1Gi }
+          # ECK sets only a readiness probe. Logstash 8.13 sometimes starts with an API that closes
+          # every connection without answering (seen when many pods start at once, e.g. after a
+          # node restart); the pipelines run but the pod never becomes ready. Restart it instead.
+          livenessProbe:
+            httpGet: { path: /, port: 9600 }
+            initialDelaySeconds: 180
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
           volumeMounts:
             - { name: sources, mountPath: /etc/logstash/conf.d, readOnly: true }
             - { name: es-ca, mountPath: /etc/esm/es-ca, readOnly: true }
