@@ -155,3 +155,9 @@ func TestSecurityHeaders(t *testing.T) {
 		}
 	}
 }
+
+func TestLogSafeDropsLineBreaks(t *testing.T) {
+	if got := logSafe("/api/cases/x\r\nlevel=ERROR forged"); strings.ContainsAny(got, "\r\n") {
+		t.Errorf("logSafe kept a line break: %q", got)
+	}
+}

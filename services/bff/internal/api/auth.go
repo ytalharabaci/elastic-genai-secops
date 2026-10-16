@@ -88,12 +88,12 @@ func requireAnalyst(analysts *Analysts, log *slog.Logger, next http.Handler) htt
 		token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		name, known := analysts.Lookup(token)
 		if !ok || !known {
-			log.Warn("rejected request without a valid analyst token", "method", r.Method, "path", r.URL.Path)
+			log.Warn("rejected request without a valid analyst token", "method", r.Method, "path", logSafe(r.URL.Path))
 			w.Header().Set("WWW-Authenticate", `Bearer realm="esm"`)
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
-		path := r.URL.Path // the handler rewrites it for case-service; log what the analyst called
+		path := logSafe(r.URL.Path) // the handler rewrites it for case-service; log what was called
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r.WithContext(context.WithValue(r.Context(), analystKey{}, name)))
 		log.Info("analyst request", "analyst", name, "method", r.Method, "path", path, "status", rec.status)
@@ -133,6 +133,11 @@ func validName(name string) bool {
 		}
 	}
 	return true
+}
+
+// logSafe strips line breaks from request data before it is logged (CodeQL go/log-injection).
+func logSafe(s string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(s, "\n", ""), "\r", "")
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {

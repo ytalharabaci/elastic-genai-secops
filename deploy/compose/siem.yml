@@ -4,7 +4,9 @@
 #   ./init-env.sh            (or .\init-env.ps1 on Windows) - creates .env with random secrets
 #   docker compose -f siem.yml up -d
 #
-# Kibana: http://localhost:5601 (user "elastic", password ELASTIC_PASSWORD from .env)
+# Kibana: https://localhost:5601 (user "elastic", password ELASTIC_PASSWORD from .env). The
+# certificates come from the local CA in the "certs" volume; trust it in the browser or accept it
+# once (docker compose cp elasticsearch:/usr/share/elasticsearch/config/certs/ca/ca.crt .).
 # Log source ports: see integrations/sources/README.md
 
 name: esm-siem
@@ -24,16 +26,27 @@ services:
           bin/elasticsearch-certutil ca --silent --pem -out /certs/ca.zip
           unzip -q -o /certs/ca.zip -d /certs
         fi
-        if [ ! -f /certs/elasticsearch/elasticsearch.crt ]; then
-          printf 'instances:\n  - name: elasticsearch\n    dns: [elasticsearch, localhost]\n    ip: [127.0.0.1]\n' > /certs/instances.yml
+        # One certificate per HTTPS service (host name = service name, plus localhost for the
+        # published ports); only missing ones are created, so an existing volume gains new ones
+        printf 'instances:\n' > /certs/instances.yml
+        missing=0
+        for svc in elasticsearch kibana bff mcp-server; do
+          [ -f "/certs/$${svc}/$${svc}.crt" ] && continue
+          printf '  - name: %s\n    dns: [%s, localhost]\n    ip: [127.0.0.1]\n' "$${svc}" "$${svc}" >> /certs/instances.yml
+          missing=1
+        done
+        if [ "$${missing}" = 1 ]; then
           bin/elasticsearch-certutil cert --silent --pem --in /certs/instances.yml -out /certs/certs.zip --ca-cert /certs/ca/ca.crt --ca-key /certs/ca/ca.key
           unzip -q -o /certs/certs.zip -d /certs
+          rm -f /certs/certs.zip
         fi
         chown -R 1000:0 /certs
-        # Certificates are public and read by every service; private keys stay group-only
+        # Certificates are public and read by every service; private keys stay with their service
         find /certs -type d -exec chmod 755 {} +
         find /certs -type f -exec chmod 640 {} +
         find /certs -type f -name '*.crt' -exec chmod 644 {} +
+        chown 65532:65532 /certs/bff/bff.key                  # distroless nonroot
+        chown 10001:10001 /certs/mcp-server/mcp-server.key    # uid set in its Dockerfile
         echo "[certs] ready"
 
   elasticsearch:
@@ -102,6 +115,9 @@ services:
       es-bootstrap: { condition: service_completed_successfully }
     environment:
       - SERVERNAME=kibana
+      - SERVER_SSL_ENABLED=true
+      - SERVER_SSL_CERTIFICATE=config/certs/kibana/kibana.crt
+      - SERVER_SSL_KEY=config/certs/kibana/kibana.key
       - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
@@ -115,7 +131,7 @@ services:
     ports:
       - "${KIBANA_BIND:-127.0.0.1}:5601:5601"
     healthcheck:
-      test: ["CMD-SHELL", "curl -s -I http://localhost:5601/api/status | grep -q 'HTTP/1.1 [24]0[0-9]'"]
+      test: ["CMD-SHELL", "curl -s -I --cacert config/certs/ca/ca.crt https://localhost:5601/api/status | grep -q 'HTTP/1.1 [24]0[0-9]'"]
       interval: 10s
       timeout: 10s
       retries: 90
@@ -131,7 +147,7 @@ services:
       - ES_CA_CERT=/certs/ca/ca.crt
       - RETENTION_DAYS=${RETENTION_DAYS:-90}
       - SNAPSHOT_POLICY=${SNAPSHOT_POLICY:-}
-      - KIBANA_URL=http://kibana:5601
+      - KIBANA_URL=https://kibana:5601
     volumes:
       - certs:/certs:ro
       - ../../content:/content:ro
