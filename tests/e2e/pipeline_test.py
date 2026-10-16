@@ -119,9 +119,14 @@ def main() -> None:
         "pending analyst review": c["review_status"] == "pending",
     }
 
-    audit = call(f"{ES}/esm-llm-audit/_search", {
-        "size": 1, "query": {"term": {"incident_id.keyword": c["incident_id"]}}}, "POST")
-    record = audit["hits"]["hits"][0]["_source"]
+    def audit_record() -> dict | None:
+        hits = call(f"{ES}/esm-llm-audit/_search", {
+            "size": 1, "query": {"term": {"incident_id.keyword": c["incident_id"]}}}, "POST")
+        return hits["hits"]["hits"][0]["_source"] if hits["hits"]["hits"] else None
+
+    # The audit record is written just before the case exists, but becomes searchable only after
+    # the next index refresh (about a second later)
+    record = wait_for("the LLM audit record", audit_record, timeout=60, every=2)
     sent = record["data_block"] + (record["response"] or "")
     checks["audit record written"] = record["outcome"] == "triaged"
     checks["no plaintext host/user/command line reached the LLM"] = (
