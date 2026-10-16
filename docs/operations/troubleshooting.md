@@ -88,6 +88,7 @@ Follow one incident through the logs: detection-service `alert published` → al
 | `field is immutable` for Job `esm-bootstrap` | `kubectl -n esm delete job esm-bootstrap` before re-applying changed content. |
 | kind: `content digest ... not found` when loading images | Use `docker save --platform linux/amd64` and `kind load image-archive` (see [kubernetes.md](../deployment/kubernetes.md#overlay-notes)). |
 | Platform pods in `CreateContainerConfigError` | Secret `esm-secrets` missing: run `deploy/kubernetes/init-secrets.sh <overlay>` and re-apply. |
+| `esm-ls-0` running but never ready, `Readiness probe failed: … EOF` | Logstash 8.13 sometimes starts with an API on 9600 that closes every connection; the pipelines still run. The liveness probe restarts it after about 6 minutes; `kubectl -n esm delete pod esm-ls-0` does it at once. |
 
 ## Getting help
 
