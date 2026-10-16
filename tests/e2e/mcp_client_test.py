@@ -2,8 +2,8 @@
 
 Run inside the compose network after pipeline_test.py has created at least one case:
     docker run --rm --network esm-siem_default -v "$PWD:/src" -w /src \
-      -e MCP_URL=http://mcp-server:8090/mcp -e MCP_TOKEN=... python:3.12-slim \
-      sh -c "pip install -q 'mcp>=1.9,<2' && python tests/e2e/mcp_client_test.py"
+      -e MCP_URL=http://mcp-server:8090/mcp -e ANALYST_TOKEN=... python:3.14-slim \
+      sh -c "pip install -q 'mcp>=2.3,<3' && python tests/e2e/mcp_client_test.py"
 """
 
 from __future__ import annotations
@@ -14,11 +14,13 @@ import os
 import re
 import sys
 
+import httpx2
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
-URL = os.getenv("MCP_URL", "http://localhost:8090/mcp")
-TOKEN = os.environ["MCP_TOKEN"]
+URL = os.getenv("MCP_URL", "https://localhost:8090/mcp")
+CA = os.getenv("MCP_CA_CERT")  # the stack's CA (deploy/compose certs volume); default: system store
+TOKEN = os.environ["ANALYST_TOKEN"]  # one analyst's token from ANALYST_TOKENS
 PLAINTEXT = re.compile(r"E2E-PC-|e2e-user-|PC-LAB-01")  # identifiers written by the e2e tests
 
 
@@ -28,7 +30,9 @@ def text(result) -> str:  # type: ignore[no-untyped-def]
 
 async def main() -> None:
     checks: dict[str, bool] = {}
-    async with streamablehttp_client(URL, headers={"Authorization": f"Bearer {TOKEN}"}) as (r, w, _):
+    http = httpx2.AsyncClient(headers={"Authorization": f"Bearer {TOKEN}"},
+                              timeout=httpx2.Timeout(30, read=300), verify=CA or True)
+    async with http, streamable_http_client(URL, http_client=http) as (r, w):
         async with ClientSession(r, w) as session:
             await session.initialize()
             tools = {t.name for t in (await session.list_tools()).tools}

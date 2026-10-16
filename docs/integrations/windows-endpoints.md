@@ -80,10 +80,12 @@ sc query sysmon64
 Startup-script results are in **Event Viewer → Applications and Services Logs → Microsoft →
 Windows → GroupPolicy → Operational** (event IDs 5016 = script completed, 7016 = script failed).
 
-## 5. Load the Winlogbeat ingest pipelines (once per version)
+## 5. Winlogbeat ingest pipelines
 
-Winlogbeat 8 parses events in Elasticsearch ingest pipelines. Load them once from one machine:
-see [integrations/sources/README.md](../../integrations/sources/README.md#windows-load-the-winlogbeat-ingest-pipelines).
+Winlogbeat 8 parses events in Elasticsearch ingest pipelines of its own version. The SIEM bootstrap
+loads them for the stack version, which is what `prepare-share.ps1` installs by default. If you
+roll out another `-ElasticVersion`, add it to `BEATS_VERSIONS` and rerun the bootstrap: see
+[integrations/sources/README.md](../../integrations/sources/README.md#windows-and-palo-alto-filebeat-ingest-pipelines).
 
 ## Notes
 

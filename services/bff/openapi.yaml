@@ -6,11 +6,15 @@ info:
   version: "0.1.0"
   description: Thin analyst API. Case reads and reviews are forwarded to case-service.
 servers:
-  - url: http://localhost:8080
+  - url: https://localhost:8080
+# /api needs an analyst token from ANALYST_TOKENS (ADR-028); /healthz is open
+security:
+  - analystToken: []
 paths:
   /healthz:
     get:
       summary: Liveness check
+      security: []
       responses:
         "200":
           description: OK
@@ -62,10 +66,12 @@ paths:
           application/json:
             schema:
               type: object
-              required: [status, analyst]
+              required: [status]
               properties:
                 status: { type: string, enum: [approved, rejected] }
-                analyst: { type: string, example: analyst1 }
+                analyst:
+                  type: string
+                  description: Ignored; the review is recorded under the analyst of the token
                 notes: { type: string, example: confirmed true positive }
       responses:
         "200":
@@ -77,6 +83,8 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "502": { $ref: "#/components/responses/Error" }
 components:
+  securitySchemes:
+    analystToken: { type: http, scheme: bearer }
   parameters:
     CaseID:
       name: id

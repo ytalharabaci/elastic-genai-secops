@@ -23,7 +23,13 @@ foreach ($line in Get-Content .env.example) {
     if ($line -eq '' -or $line.StartsWith('#')) { if ($created) { $out.Add($line) }; continue }
     $key = $line.Split('=')[0]
     if ($existing -ccontains $key) { continue }
-    if ($line -cin 'KIBANA_ENCRYPTION_KEY=__GENERATE__', 'MCP_TOKEN=__GENERATE__') { $out.Add("$key=$(New-Secret 48)") }
+    if ($line -ceq 'KIBANA_ENCRYPTION_KEY=__GENERATE__') { $out.Add("$key=$(New-Secret 48)") }
+    elseif ($line -cmatch '^([A-Z_]+)=__GENERATE_ANALYST__$') {
+        # Keeps the token of an older .env's MCP_TOKEN, so connected MCP clients keep working
+        $old = if ($created) { $null } else { Get-Content $envPath | Where-Object { $_ -cmatch '^MCP_TOKEN=' } | ForEach-Object { $_.Substring(10) } | Select-Object -First 1 }
+        $token = if ($old) { $old } else { New-Secret 48 }
+        $out.Add("$key=analyst:$token")   # $key: the -cmatch above replaced $Matches
+    }
     elseif ($line -cmatch '^([A-Z_]+)=__GENERATE__$') { $out.Add("$($Matches[1])=$(New-Secret 24)") }
     else { $out.Add($line) }
     $added++

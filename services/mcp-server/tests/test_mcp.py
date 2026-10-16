@@ -48,9 +48,7 @@ class FakeES:
 
 
 def text(result) -> str:  # type: ignore[no-untyped-def]
-    """call_tool returns content blocks (or (blocks, structured) on newer SDKs)."""
-    blocks = result[0] if isinstance(result, tuple) else result
-    return blocks[0].text
+    return result.content[0].text
 
 
 async def test_case_view_is_masked_and_hides_notes() -> None:
@@ -104,26 +102,78 @@ async def test_tools() -> None:
     assert stats["total"] == 7 and stats["by_rule"] == {"x": 3}
 
 
-def test_http_requires_token(monkeypatch: pytest.MonkeyPatch) -> None:
+ALICE = "alice-token-0123456789abcdef"
+
+
+def _initialize(client, token: str):  # type: ignore[no-untyped-def]
+    return client.post("/mcp", headers={"Authorization": f"Bearer {token}",
+                                        "Accept": "application/json, text/event-stream"},
+                       json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+                           "protocolVersion": "2025-03-26", "capabilities": {},
+                           "clientInfo": {"name": "test", "version": "1"}}})
+
+
+def test_http_requires_analyst_token(monkeypatch: pytest.MonkeyPatch) -> None:
     from starlette.testclient import TestClient
 
     from app.main import http_app
 
     monkeypatch.setenv("HUNTS_FILE", str(HUNTS))
     monkeypatch.setenv("MCP_ALLOWED_HOSTS", "testserver")
-    with pytest.raises(SystemExit):
-        http_app("short")
-    token = "t" * 32
-    with TestClient(http_app(token)) as client:
+    for bad in ("", "alice:short", "alice"):
+        with pytest.raises(SystemExit):
+            http_app(bad)
+    with TestClient(http_app(f"alice:{ALICE},bob:{'b' * 32}")) as client:
         assert client.post("/mcp", json={}).status_code == 401
         wrong = {"Authorization": "Bearer wrong"}
         assert client.post("/mcp", json={}, headers=wrong).status_code == 401
-        ok = client.post("/mcp", headers={"Authorization": f"Bearer {token}",
-                                          "Accept": "application/json, text/event-stream"},
-                         json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
-                             "protocolVersion": "2025-03-26", "capabilities": {},
-                             "clientInfo": {"name": "test", "version": "1"}}})
+        assert client.post("/mcp", json={}, headers={"Authorization": ALICE}).status_code == 401
+        ok = _initialize(client, ALICE)
         assert ok.status_code == 200, ok.text
+
+
+def test_tool_calls_reach_bff_with_the_callers_token(monkeypatch: pytest.MonkeyPatch,
+                                                      caplog: pytest.LogCaptureFixture) -> None:
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from starlette.testclient import TestClient
+
+    from app.main import http_app
+
+    seen: list[str] = []
+
+    class FakeBff(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802
+            seen.append(self.headers.get("Authorization", ""))
+            body = json.dumps({"cases": []}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args) -> None:  # type: ignore[no-untyped-def]
+            pass
+
+    bff = HTTPServer(("127.0.0.1", 0), FakeBff)
+    threading.Thread(target=bff.serve_forever, daemon=True).start()
+    monkeypatch.setenv("HUNTS_FILE", str(HUNTS))
+    monkeypatch.setenv("MCP_ALLOWED_HOSTS", "testserver")
+    monkeypatch.setenv("CASE_API_URL", f"http://127.0.0.1:{bff.server_port}/api")
+    monkeypatch.delenv("ANALYST_TOKEN", raising=False)
+    try:
+        with TestClient(http_app(f"alice:{ALICE}")) as client, caplog.at_level("INFO"):
+            assert _initialize(client, ALICE).status_code == 200
+            call = client.post("/mcp", headers={"Authorization": f"Bearer {ALICE}",
+                                                "Accept": "application/json, text/event-stream"},
+                               json={"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                                     "params": {"name": "list_cases", "arguments": {}}})
+            assert call.status_code == 200, call.text
+    finally:
+        bff.shutdown()
+    assert seen == [f"Bearer {ALICE}"]
+    assert any("analyst=alice tool=list_cases" in r.getMessage() for r in caplog.records)
 
 
 async def test_masking_client_uses_stateless_tokens_endpoint():

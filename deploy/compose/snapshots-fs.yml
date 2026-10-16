@@ -1,0 +1,41 @@
+# Snapshots to a shared file system: repository esm-snapshots, daily SLM policy esm-daily, and ILM
+# deletes an index only after it has been snapshotted (docs/components/elasticsearch.md#snapshots).
+#
+#   docker compose -f siem.yml -f snapshots-fs.yml up -d
+#
+# The "snapshots" volume is on the Docker host by default, which protects against a broken index
+# but not against losing the host. For a real backup put it on another machine, e.g. NFS (below).
+
+services:
+  # The volume is created root-owned; Elasticsearch runs as uid 1000
+  snapshots-init:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:-8.13.4}
+    user: "0"
+    volumes:
+      - snapshots:/snapshots
+    entrypoint: ["chown", "1000:0", "/snapshots"]
+
+  elasticsearch:
+    depends_on:
+      snapshots-init: { condition: service_completed_successfully }
+    environment:
+      - path.repo=/usr/share/elasticsearch/snapshots
+    volumes:
+      - snapshots:/usr/share/elasticsearch/snapshots
+
+  es-bootstrap:
+    environment: &snapshot-env
+      - SNAPSHOT_REPOSITORY_TYPE=fs
+      - 'SNAPSHOT_REPOSITORY_SETTINGS={"location": "/usr/share/elasticsearch/snapshots"}'
+      - SNAPSHOT_POLICY=${SNAPSHOT_POLICY:-esm-daily}
+      - SNAPSHOT_SCHEDULE=${SNAPSHOT_SCHEDULE:-0 30 1 * * ?}
+      - SNAPSHOT_EXPIRE_AFTER=${SNAPSHOT_EXPIRE_AFTER:-730d}
+
+  rules:
+    environment: *snapshot-env
+
+volumes:
+  snapshots:
+    # NFS example (the export must be writable by uid 1000):
+    # driver: local
+    # driver_opts: { type: nfs, o: "addr=nfs.example.local,rw,nfsvers=4", device: ":/export/esm-snapshots" }

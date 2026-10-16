@@ -8,15 +8,15 @@ version = "0.2.0"
 requires-python = ">=3.12"
 dependencies = [
     "esm-common",
-    "fastapi>=0.142.2",
+    "fastapi>=0.143.0",
     "uvicorn>=0.54.0",
-    "pydantic>=2.13.5",
+    "pydantic>=2.14.1",
     "structlog>=26.1.0",
     "elasticsearch[async]>=8.13,<9",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=9.1.1", "pytest-asyncio>=1.4.0"]
+dev = ["pytest>=9.1.1", "pytest-asyncio>=1.4.0", "cryptography>=46"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

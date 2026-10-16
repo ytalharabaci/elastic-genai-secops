@@ -1,0 +1,154 @@
+# Ingress: deny by default, then one policy per destination. Every allowed path is in
+# docs/deployment/kubernetes.md#network-policies.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: elasticsearch
+spec:
+  podSelector:
+    matchLabels: { elasticsearch.k8s.elastic.co/cluster-name: esm }
+  policyTypes: [Ingress]
+  ingress:
+    # Transport between the nodes
+    - from:
+        - podSelector:
+            matchLabels: { elasticsearch.k8s.elastic.co/cluster-name: esm }
+      ports: [{ port: 9300 }, { port: 9200 }]
+    # HTTP API: Kibana, Logstash, the platform services that read or write indices, the setup Jobs
+    # and the ECK operator
+    - from:
+        - podSelector:
+            matchLabels: { kibana.k8s.elastic.co/name: esm }
+        - podSelector:
+            matchLabels: { logstash.k8s.elastic.co/name: esm }
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [detection-service, case-service, masking-service, llm-orchestrator, mcp-server]
+        - podSelector:
+            matchExpressions:
+              - { key: job-name, operator: In, values: [esm-bootstrap, esm-gcs-snapshots] }
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: elastic-system }
+      ports: [{ port: 9200 }]
+---
+# Analysts reach Kibana directly; put an authenticating proxy or Ingress in front (ROADMAP.md)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kibana
+spec:
+  podSelector:
+    matchLabels: { kibana.k8s.elastic.co/name: esm }
+  policyTypes: [Ingress]
+  ingress:
+    - ports: [{ port: 5601 }]
+---
+# Log sources send from anywhere; the monitoring API only to the ECK operator
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: logstash
+spec:
+  podSelector:
+    matchLabels: { logstash.k8s.elastic.co/name: esm }
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - { port: 5044, protocol: TCP }
+        - { port: 5045, protocol: TCP }
+        - { port: 5046, protocol: TCP }
+        - { port: 5047, protocol: TCP }
+        - { port: 5514, protocol: UDP }
+        - { port: 5514, protocol: TCP }
+        - { port: 5515, protocol: TCP }
+        - { port: 5516, protocol: UDP }
+        - { port: 5516, protocol: TCP }
+        - { port: 5517, protocol: UDP }
+        - { port: 5517, protocol: TCP }
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: elastic-system }
+      ports: [{ port: 9600 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nats
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: nats }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [detection-service, alert-gateway, enrichment-service, llm-orchestrator,
+                         case-service, outbound-service]
+      ports: [{ port: 4222 }]
+---
+# Holds the reverse maps (ADR-003/015): only the services that mask, unmask or show tokens
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: masking-service
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: masking-service }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [enrichment-service, case-service, mcp-server]
+      ports: [{ port: 8001 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: case-service
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: case-service }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: bff }
+      ports: [{ port: 8002 }]
+---
+# The analyst API and the MCP endpoint are reached from outside the namespace (bearer token on MCP)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: bff
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: bff }
+  policyTypes: [Ingress]
+  ingress:
+    - ports: [{ port: 8080 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-server
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: mcp-server }
+  policyTypes: [Ingress]
+  ingress:
+    - ports: [{ port: 8090 }]

@@ -3,27 +3,54 @@
 from __future__ import annotations
 
 import os
+import ssl
 from typing import Any
 
 import httpx
 
+from app.auth import current_token
+
+
+def ca_context(ca_file: str | None) -> ssl.SSLContext:
+    """Verifying context for Elasticsearch; same as esm_common.tls.ca_context.
+
+    Python 3.13+ rejects the elasticsearch-certutil CA (no keyUsage) under VERIFY_X509_STRICT, so
+    the flag is cleared for that CA; chain, expiry and host name are still checked.
+    """
+    ctx = ssl.create_default_context(cafile=ca_file or None)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    if ca_file:
+        ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
+    return ctx
+
 
 class CaseAPI:
-    """Reads cases through bff (the analyst API); never touches the case store directly."""
+    """Reads cases through bff (the analyst API); never touches the case store directly.
+
+    Sends the calling analyst's token (HTTP transport), or ANALYST_TOKEN with stdio, so bff
+    authorises and logs the analyst, not the MCP server.
+    """
 
     def __init__(self, base_url: str, client: httpx.AsyncClient | None = None) -> None:
-        self._client = client or httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=15)
+        # bff over HTTPS (compose) uses the same platform CA as Elasticsearch
+        self._client = client or httpx.AsyncClient(
+            base_url=base_url.rstrip("/"), timeout=15,
+            verify=ca_context(os.getenv("ELASTIC_CA_CERTS")))
+
+    def _auth(self) -> dict[str, str]:
+        token = current_token.get() or os.getenv("ANALYST_TOKEN", "")
+        return {"Authorization": f"Bearer {token}"} if token else {}
 
     async def list(self, review_status: str, size: int) -> list[dict[str, Any]]:
         params = {"size": str(size)}
         if review_status:
             params["review_status"] = review_status
-        resp = await self._client.get("/cases", params=params)
+        resp = await self._client.get("/cases", params=params, headers=self._auth())
         resp.raise_for_status()
         return resp.json()["cases"]
 
     async def get(self, case_id: str) -> dict[str, Any] | None:
-        resp = await self._client.get(f"/cases/{case_id}")
+        resp = await self._client.get(f"/cases/{case_id}", headers=self._auth())
         if resp.status_code == 404:
             return None
         resp.raise_for_status()
@@ -61,7 +88,7 @@ class Elasticsearch:
 
     @classmethod
     def from_env(cls) -> Elasticsearch:
-        ca = os.getenv("ELASTIC_CA_CERTS") or True
+        ca = ca_context(os.getenv("ELASTIC_CA_CERTS"))
         return cls(httpx.AsyncClient(
             base_url=os.getenv("ELASTIC_URL", "https://localhost:9200").rstrip("/"),
             auth=(os.getenv("ELASTIC_USER", "esm_platform"), os.getenv("ELASTIC_PASSWORD", "")),

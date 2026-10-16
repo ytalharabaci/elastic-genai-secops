@@ -3,8 +3,8 @@
 [![CI/CD](https://github.com/yusufarbc/elastic-genai-secops/actions/workflows/pipeline.yml/badge.svg?branch=production)](https://github.com/yusufarbc/elastic-genai-secops/actions/workflows/pipeline.yml)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)
 ![Elastic Stack](https://img.shields.io/badge/Elastic%20Stack-8.13-005571?logo=elasticsearch)
-![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)
-![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python)
+![Go](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go)
+![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python)
 
 An open, AI-assisted Security Operations platform built on the **Basic-licensed Elastic Stack**.
 Logs are collected and parsed with Logstash and Beats, Elastic detection rules raise alerts, alerts are
@@ -108,7 +108,7 @@ cd elastic-genai-secops/deploy/compose
 docker compose -f siem.yml up -d
 ```
 
-Open <http://localhost:5601> and log in as `elastic` with `ELASTIC_PASSWORD` from `deploy/compose/.env`.
+Open <https://localhost:5601> (the certificate is from the stack's own CA) and log in as `elastic` with `ELASTIC_PASSWORD` from `deploy/compose/.env`.
 Send a test event with `logger -n localhost -P 5514 -d "hello esm"` and find it in Discover (`logs-*`).
 Then connect real sources: [integrations/sources](integrations/sources/README.md).
 
@@ -128,9 +128,10 @@ docker compose -f siem.yml -f platform.yml up -d --build
 python ../../tests/e2e/pipeline_test.py        # optional end-to-end check
 ```
 
-Cases are served at <http://localhost:8080/api/cases>.
+Cases are served at <https://localhost:8080/api/cases> to analysts with a token from
+`ANALYST_TOKENS` in `.env` (`Authorization: Bearer <token>`).
 The same stack exposes a read-only, masked [MCP server](docs/genai/mcp-server.md) on
-`http://localhost:8090/mcp` for Claude Desktop, Claude Code and other MCP clients.
+`https://localhost:8090/mcp` for Claude Desktop, Claude Code and other MCP clients.
 
 **Kubernetes with ECK** (same profiles; `lab` runs on kind, k3d or Docker Desktop):
 

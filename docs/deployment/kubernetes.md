@@ -80,6 +80,8 @@ done
 
 **onprem** pulls `ghcr.io/yusufarbc/elastic-genai-secops/<service>:latest` (published by CI from
 `production`). Set your StorageClass with the commented patch in `overlays/onprem/kustomization.yaml`.
+For snapshots to S3-compatible storage, enable `components/snapshots-s3` there
+([snapshots](../components/elasticsearch.md#snapshots)).
 
 **gke** before applying:
 
@@ -98,6 +100,33 @@ done
 
 3. The `esm-gcs-snapshots` Job registers repository `esm-gcs` and the daily policy `esm-daily`
    (`SNAPSHOT_EXPIRE_AFTER`, default 730 days, is the regulatory retention; the hot tier keeps 14 days).
+   The overlay sets `SNAPSHOT_POLICY=esm-daily`, so ILM deletes an index from the hot tier only
+   after `esm-daily` has snapshotted it; the bootstrap Job waits for this Job to create the policy.
+
+## Network policies
+
+Every overlay includes `components/network-policies`. Ingress to a pod is denied unless listed:
+
+| Destination | Allowed from |
+| --- | --- |
+| Elasticsearch 9200 | Kibana, Logstash, detection-service, case-service, masking-service, llm-orchestrator, mcp-server, the `esm-bootstrap` and `esm-gcs-snapshots` Jobs, the ECK operator (namespace `elastic-system`) |
+| Elasticsearch 9300 | Elasticsearch nodes |
+| NATS 4222 | detection-service, alert-gateway, enrichment-service, llm-orchestrator, case-service, outbound-service |
+| masking-service 8001 | enrichment-service, case-service, mcp-server |
+| case-service 8002 | bff |
+| Kibana 5601, bff 8080, mcp-server 8090 | anywhere (put authentication in front, see ROADMAP) |
+| Logstash inputs (5044-5047, 5514-5517) | anywhere; API 9600 from the ECK operator |
+
+nats, detection-service, alert-gateway, masking-service, case-service, bff and mcp-server may only
+open connections to pods in the namespace and to DNS, so they cannot send data out. Elasticsearch
+(snapshots), Kibana, Logstash, the Jobs, enrichment-service (threat intel), llm-orchestrator (LLM
+provider) and outbound-service (notifications, ticketing) keep unrestricted egress because their
+destinations depend on the site; restrict them in your overlay if you know them.
+
+The policies need a CNI that enforces NetworkPolicy (Calico, Cilium, GKE Dataplane V2); without
+one they are accepted and ignored. If the ECK operator runs in another namespace, patch the
+`elastic-system` selectors in `elasticsearch` and `logstash`. A new service that calls another
+needs a line in `components/network-policies/ingress.yaml`.
 
 ## LLM provider
 
@@ -107,6 +136,6 @@ Edit `LLM_PROVIDER`, `LLM_MODEL_ID` and `LLM_BASE_URL` in the `esm-platform-conf
 
 ## Limits
 
-- `alert-gateway` and `detection-service` must run with one replica (in-memory correlation, single checkpoint).
-- No NetworkPolicies yet; restrict access to `masking-service` before production.
+- `detection-service` must run with one replica (it owns the alert checkpoint). `alert-gateway` can
+  scale out: its correlation windows are in the NATS bucket `esm-correlation` (ADR-027).
 - No Fleet / Elastic Agent resources yet (planned).

@@ -4,6 +4,7 @@ package api
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -16,7 +17,10 @@ import (
 //	GET  /api/cases[?review_status=pending]  -> case-service GET /cases
 //	GET  /api/cases/{id}                     -> case-service GET /cases/{id}
 //	POST /api/cases/{id}/review              -> case-service POST /cases/{id}/review
-func Handler(caseService *url.URL) http.Handler {
+//
+// /api requires "Authorization: Bearer <analyst token>"; a review is recorded under the analyst
+// the token belongs to (ADR-028).
+func Handler(caseService *url.URL, analysts *Analysts, log *slog.Logger) http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(caseService)
 	forward := func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/api")
@@ -24,14 +28,25 @@ func Handler(caseService *url.URL) http.Handler {
 		proxy.ServeHTTP(w, r)
 	}
 
+	review := func(w http.ResponseWriter, r *http.Request) {
+		if err := stampReviewer(r); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		forward(w, r)
+	}
+
+	api := http.NewServeMux()
+	api.HandleFunc("GET /api/cases", forward)
+	api.HandleFunc("GET /api/cases/{id}", forward)
+	api.HandleFunc("POST /api/cases/{id}/review", review)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
-	mux.HandleFunc("GET /api/cases", forward)
-	mux.HandleFunc("GET /api/cases/{id}", forward)
-	mux.HandleFunc("POST /api/cases/{id}/review", forward)
+	mux.Handle("/api/", requireAnalyst(analysts, log, api))
 	return securityHeaders(mux)
 }
 

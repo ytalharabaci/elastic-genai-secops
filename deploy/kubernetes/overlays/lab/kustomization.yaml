@@ -11,6 +11,7 @@ resources:
   - ../../base
 components:
   - ../../components/platform
+  - ../../components/network-policies
 
 secretGenerator:
   # Created by init-secrets.sh; git-ignored

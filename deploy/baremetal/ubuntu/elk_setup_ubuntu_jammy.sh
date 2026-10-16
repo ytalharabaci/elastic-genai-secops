@@ -12,6 +12,9 @@
 # Settings (environment variables):
 #   ELASTIC_VERSION  Elastic Stack version to install and hold   (default 8.13.4)
 #   RETENTION_DAYS   delete logs/metrics after N days             (default 90)
+#   SNAPSHOT_POLICY  existing SLM policy to wait for before delete (default none)
+#   SNAPSHOT_REPO_PATH  shared directory (e.g. an NFS mount) for snapshots; registers repository
+#                    esm-snapshots and policy esm-daily, and ILM then waits for it (default none)
 #   KIBANA_BIND      interface Kibana listens on                  (default 0.0.0.0)
 #   ES_NAMESPACE     data stream namespace                        (default default)
 #   FORTIGATE_TZ     time zone of FortiGate clocks, e.g. Europe/Istanbul   (default UTC)
@@ -22,10 +25,21 @@ set -Eeuo pipefail
 
 ELASTIC_VERSION="${ELASTIC_VERSION:-8.13.4}"
 RETENTION_DAYS="${RETENTION_DAYS:-90}"
+SNAPSHOT_POLICY="${SNAPSHOT_POLICY:-}"
+SNAPSHOT_REPO_PATH="${SNAPSHOT_REPO_PATH:-}"
 KIBANA_BIND="${KIBANA_BIND:-0.0.0.0}"
 ES_NAMESPACE="${ES_NAMESPACE:-default}"
 FORTIGATE_TZ="${FORTIGATE_TZ:-UTC}"
 PANOS_TZ="${PANOS_TZ:-UTC}"
+
+if [[ -n "${SNAPSHOT_REPO_PATH}" && ! "${SNAPSHOT_REPO_PATH}" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+  echo "SNAPSHOT_REPO_PATH must be an absolute path (letters, digits, . _ - /)" >&2; exit 1
+fi
+# Snapshot settings for content/bootstrap.sh
+SNAPSHOT_ENV=(SNAPSHOT_POLICY="${SNAPSHOT_POLICY}")
+if [[ -n "${SNAPSHOT_REPO_PATH}" ]]; then
+  SNAPSHOT_ENV+=(SNAPSHOT_REPOSITORY_TYPE=fs "SNAPSHOT_REPOSITORY_SETTINGS={\"location\": \"${SNAPSHOT_REPO_PATH}\"}")
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
@@ -158,6 +172,11 @@ install -m 0644 "${ES_CA_CRT}" /etc/kibana/certs/ca.crt
 ########################################
 step "6/9 Configuration files"
 install -m 0660 -o root -g elasticsearch "${CONFIG_DIR}/elasticsearch.yml" /etc/elasticsearch/elasticsearch.yml
+if [[ -n "${SNAPSHOT_REPO_PATH}" ]]; then
+  # A snapshot repository must be listed in path.repo; with several nodes it must be shared storage
+  install -d -m 0750 -o elasticsearch -g elasticsearch "${SNAPSHOT_REPO_PATH}"
+  echo "path.repo: [\"${SNAPSHOT_REPO_PATH}\"]" >> /etc/elasticsearch/elasticsearch.yml
+fi
 # The package's security auto-configuration stores passwords for its own PKCS#12 files; we use PEM files instead
 for key in xpack.security.http.ssl.keystore.secure_password \
            xpack.security.transport.ssl.keystore.secure_password \
@@ -221,7 +240,7 @@ curl -sS -f --cacert "${ES_CA_CRT}" -u "elastic:${ELASTIC_PASSWORD}" -H 'Content
 
 info "loading ILM, templates, roles and the logstash_ingest user"
 ES_URL="${ES_URL}" ES_PASSWORD="${ELASTIC_PASSWORD}" ES_CA_CERT="${ES_CA_CRT}" RETENTION_DAYS="${RETENTION_DAYS}" \
-  LOGSTASH_INGEST_PASSWORD="${LOGSTASH_INGEST_PASSWORD}" bash "${CONTENT_DIR}/bootstrap.sh"
+  env "${SNAPSHOT_ENV[@]}" LOGSTASH_INGEST_PASSWORD="${LOGSTASH_INGEST_PASSWORD}" bash "${CONTENT_DIR}/bootstrap.sh"
 
 ########################################
 step "8/9 Keystores, start Kibana and Logstash"
@@ -248,7 +267,7 @@ systemctl restart kibana logstash
 ########################################
 step "9/9 Detection rules"
 ES_URL="${ES_URL}" ES_PASSWORD="${ELASTIC_PASSWORD}" ES_CA_CERT="${ES_CA_CRT}" RETENTION_DAYS="${RETENTION_DAYS}" \
-  KIBANA_URL="http://127.0.0.1:5601" bash "${CONTENT_DIR}/bootstrap.sh"
+  env "${SNAPSHOT_ENV[@]}" KIBANA_URL="http://127.0.0.1:5601" bash "${CONTENT_DIR}/bootstrap.sh"
 
 cat <<EOF
 
@@ -257,6 +276,7 @@ Kibana          http://$(hostname -I | awk '{print $1}'):5601   (user: elastic)
 Credentials     ${CREDENTIALS_FILE}   (root only)
 Elasticsearch   ${ES_URL}   (localhost only)
 Retention       ${RETENTION_DAYS} days (ILM policy esm-logs)
+Snapshots       ${SNAPSHOT_REPO_PATH:-${SNAPSHOT_POLICY:-none (indices are deleted without a snapshot)}}
 
 Log source ports (open them in your firewall as needed):
   5044/tcp  Palo Alto (Filebeat panw)      5514/udp+tcp  syslog RFC3164

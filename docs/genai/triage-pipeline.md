@@ -20,7 +20,7 @@ flowchart LR
 | Service | Language | Does | Stores |
 | --- | --- | --- | --- |
 | detection-service | Go | Polls open alerts, normalizes them, extracts MITRE techniques | checkpoint in `esm-state` |
-| alert-gateway | Go | Groups alerts by host + user + first technique within `CORRELATION_WINDOW`; emits early at `CORRELATION_THRESHOLD` alerts; risk score | in memory |
+| alert-gateway | Go | Groups alerts by host + user + first technique within `CORRELATION_WINDOW`; emits early at `CORRELATION_THRESHOLD` alerts; risk score | NATS KV `esm-correlation` |
 | enrichment-service | Python | Builds the curated incident: masked identifiers, timeline (max 50), deterministic summary. Free-text fields such as command lines are never forwarded | – |
 | masking-service | Python | Deterministic pseudonyms (`host_1a2b3c`) and the only reverse map; maps expire after `MASKING_MAP_TTL_HOURS` (default 14 days, ADR-025) | `esm-masking-maps` |
 | llm-orchestrator | Python | The only LLM caller: one call per incident, JSON schema validation, retries, token budget per window, audit log | `esm-llm-audit` |
@@ -41,8 +41,16 @@ docker compose -f siem.yml -f platform.yml up -d --build
 python ../../tests/e2e/pipeline_test.py   # optional end-to-end check (about 5-10 minutes)
 ```
 
-Cases: `GET http://localhost:8080/api/cases?review_status=pending`, details at `/api/cases/{id}`,
-analyst decision with `POST /api/cases/{id}/review` and `{"status": "approved|rejected", "analyst": "...", "notes": "..."}`.
+Cases: `GET https://localhost:8080/api/cases?review_status=pending`, details at `/api/cases/{id}`,
+analyst decision with `POST /api/cases/{id}/review` and `{"status": "approved|rejected", "notes": "..."}`.
+Every `/api` request needs `Authorization: Bearer <token>` from `ANALYST_TOKENS`; the review is
+recorded under that token's analyst (ADR-028):
+
+```bash
+TOKEN=$(sed -n 's/^ANALYST_TOKENS=[^:]*:\([^,]*\).*/\1/p' .env)   # the first analyst
+docker compose -f siem.yml cp elasticsearch:/usr/share/elasticsearch/config/certs/ca/ca.crt esm-ca.crt
+curl --cacert esm-ca.crt -H "Authorization: Bearer $TOKEN" "https://localhost:8080/api/cases?review_status=pending"
+```
 
 ## Choosing the LLM
 
@@ -73,6 +81,5 @@ response, model, token counts, latency and outcome.
 
 ## Limits (see ROADMAP.md)
 
-- alert-gateway keeps open correlation windows in memory; alerts of an unfinished window are lost on restart.
 - The GCP Pub/Sub bus adapter is not implemented yet (`BUS_BACKEND=nats` only).
 - No asset-criticality or GeoIP enrichers yet.
