@@ -10,6 +10,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Fixed
 
+- Python services could not reach Elasticsearch after the move to Python 3.14: its default
+  `VERIFY_X509_STRICT` rejects the `elasticsearch-certutil` CA (no keyUsage extension). masking-service,
+  llm-orchestrator and mcp-server clear that flag for the configured CA only; chain, expiry and host
+  name are still verified (`esm_common.tls.ca_context`, regression test with such a CA).
 - Repository links, clone instructions and README badge point to the renamed repository
   (`elastic-genai-secops`), its `production` branch and the current pipeline workflow.
 - README architecture diagram redrawn top to bottom in four layers; it was one row of 15 boxes

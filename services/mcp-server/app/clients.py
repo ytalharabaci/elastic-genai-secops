@@ -3,11 +3,25 @@
 from __future__ import annotations
 
 import os
+import ssl
 from typing import Any
 
 import httpx
 
 from app.auth import current_token
+
+
+def ca_context(ca_file: str | None) -> ssl.SSLContext:
+    """Verifying context for Elasticsearch; same as esm_common.tls.ca_context.
+
+    Python 3.13+ rejects the elasticsearch-certutil CA (no keyUsage) under VERIFY_X509_STRICT, so
+    the flag is cleared for that CA; chain, expiry and host name are still checked.
+    """
+    ctx = ssl.create_default_context(cafile=ca_file or None)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    if ca_file:
+        ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
+    return ctx
 
 
 class CaseAPI:
@@ -71,7 +85,7 @@ class Elasticsearch:
 
     @classmethod
     def from_env(cls) -> Elasticsearch:
-        ca = os.getenv("ELASTIC_CA_CERTS") or True
+        ca = ca_context(os.getenv("ELASTIC_CA_CERTS"))
         return cls(httpx.AsyncClient(
             base_url=os.getenv("ELASTIC_URL", "https://localhost:9200").rstrip("/"),
             auth=(os.getenv("ELASTIC_USER", "esm_platform"), os.getenv("ELASTIC_PASSWORD", "")),

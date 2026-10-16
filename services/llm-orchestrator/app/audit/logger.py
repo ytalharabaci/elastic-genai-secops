@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 import httpx
 import structlog
 from esm_common.contracts import MaskedIncident, TriageDecision
+from esm_common.tls import ca_context
 
 from app.provider.base import LLMResponse
 
@@ -30,9 +31,8 @@ class AuditLogger:
         url = os.getenv("ELASTIC_URL")
         if not url:
             return cls(None)
-        ca = os.getenv("ELASTIC_CA_CERTS") or True
         client = httpx.AsyncClient(
-            base_url=url.rstrip("/"), verify=ca, timeout=15,
+            base_url=url.rstrip("/"), verify=ca_context(os.getenv("ELASTIC_CA_CERTS")), timeout=15,
             auth=(os.getenv("ELASTIC_USER", "elastic"), os.getenv("ELASTIC_PASSWORD", "")),
         )
         return cls(client)
