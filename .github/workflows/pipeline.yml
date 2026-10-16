@@ -230,8 +230,12 @@ jobs:
                   p.parent.mkdir(parents=True, exist_ok=True); p.write_text(json.dumps(s))
           EOF
           go install github.com/yannh/kubeconform/cmd/kubeconform@v0.6.7
-          for o in lab onprem gke; do
-            sh deploy/kubernetes/init-secrets.sh "$o"
+          # Optional components are checked on top of the overlay they are meant for
+          mkdir -p deploy/kubernetes/overlays/onprem-snapshots-s3
+          printf 'resources: [../onprem]\ncomponents: [../../components/snapshots-s3]\n' \
+            > deploy/kubernetes/overlays/onprem-snapshots-s3/kustomization.yaml
+          for o in lab onprem gke onprem-snapshots-s3; do
+            [ "$o" = onprem-snapshots-s3 ] || sh deploy/kubernetes/init-secrets.sh "$o"   # uses onprem's
             kubectl kustomize --load-restrictor LoadRestrictionsNone "deploy/kubernetes/overlays/$o" \
               | "$(go env GOPATH)/bin/kubeconform" -strict -summary -kubernetes-version 1.31.0 \
                   -schema-location default \

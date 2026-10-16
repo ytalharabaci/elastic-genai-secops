@@ -80,6 +80,8 @@ done
 
 **onprem** pulls `ghcr.io/yusufarbc/elastic-genai-secops/<service>:latest` (published by CI from
 `production`). Set your StorageClass with the commented patch in `overlays/onprem/kustomization.yaml`.
+For snapshots to S3-compatible storage, enable `components/snapshots-s3` there
+([snapshots](../components/elasticsearch.md#snapshots)).
 
 **gke** before applying:
 

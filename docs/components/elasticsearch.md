@@ -40,22 +40,56 @@ curl -s $CA -u "$AUTH" "$ES/_cat/indices/esm-*?v"
 
 ## Snapshots
 
-The `gke` overlay registers the GCS repository `esm-gcs` and the daily SLM policy `esm-daily`
-(`deploy/kubernetes/overlays/gke/gcs-snapshot-job.yaml`). For other targets register any
-[snapshot repository](https://www.elastic.co/guide/en/elasticsearch/reference/8.13/snapshot-restore.html)
-(shared file system, S3, MinIO) and an SLM policy the same way; the hot retention stays
-`RETENTION_DAYS`.
+Snapshots are the archive behind the hot tier (ADR-010): `RETENTION_DAYS` is how long data stays
+searchable in Elasticsearch, `SNAPSHOT_EXPIRE_AFTER` (default 730 days) how long snapshots are kept.
+With a snapshot policy configured, ILM deletes an index only after that policy has snapshotted it.
 
-Set `SNAPSHOT_POLICY` to the SLM policy (`esm-daily` in the `gke` overlay) and the bootstrap adds
-`wait_for_snapshot` to the delete phase: an index past `RETENTION_DAYS` is deleted only after that
-policy has completed a snapshot. Elasticsearch refuses an ILM policy that names a missing SLM policy,
-so the bootstrap waits up to 10 minutes for it to exist. Without `SNAPSHOT_POLICY` indices are
-deleted on schedule and the bootstrap logs a warning.
+| Target | Repository | How to enable |
+| --- | --- | --- |
+| Kubernetes `gke` | GCS, Workload Identity | On by default (`esm-gcs-snapshots` Job, policy `esm-daily`) |
+| Kubernetes `onprem` | S3-compatible (MinIO, Ceph RGW, AWS S3) | Add `components/snapshots-s3`; set `S3_ENDPOINT`, `S3_BUCKET` in it and create Secret `esm-snapshot-s3` (see the component's header) |
+| Compose | Shared directory or NFS | `-f snapshots-fs.yml` |
+| Compose | S3-compatible | `-f snapshots-s3.yml` with `S3_*` in `.env`; `--profile s3-lab` adds a local SeaweedFS to try it |
+| Bare metal | Shared directory or NFS mount | `SNAPSHOT_REPO_PATH=/mnt/esm-snapshots` |
+
+Outside `gke`, `content/bootstrap.sh` registers the repository `esm-snapshots` and the SLM policy:
+
+| Variable | Meaning |
+| --- | --- |
+| `SNAPSHOT_REPOSITORY_TYPE` | `fs` or `s3`; empty = no repository is registered |
+| `SNAPSHOT_REPOSITORY_SETTINGS` | Repository settings as JSON, e.g. `{"location": "/mnt/esm-snapshots"}` or `{"bucket": "esm", "base_path": "esm"}` |
+| `SNAPSHOT_POLICY` | SLM policy to create and wait for (default `esm-daily` when a repository is registered) |
+| `SNAPSHOT_SCHEDULE` | SLM cron schedule (default `0 30 1 * * ?`, 01:30 daily) |
+| `SNAPSHOT_EXPIRE_AFTER` | Delete snapshots older than this (default `730d`; keeps at least 7) |
+
+Registering verifies that every node can write to the repository, so a path missing from
+`path.repo`, an unmounted share or wrong S3 credentials fail the bootstrap instead of the first
+snapshot. An `fs` repository on a multi-node cluster must be storage that all nodes mount. S3
+credentials are secure settings: they go into the Elasticsearch keystore (ECK `secureSettings`, or
+`elasticsearch-keystore add s3.client.default.access_key` on bare metal), never into
+`elasticsearch.yml`.
+
+`SNAPSHOT_POLICY` alone (without a repository type) points ILM at a policy that already exists, as
+the `gke` overlay does. Elasticsearch refuses an ILM policy that names a missing SLM policy, so the
+bootstrap waits up to 10 minutes for it. Without any snapshot policy indices are deleted on
+schedule and the bootstrap logs a warning.
 
 If snapshots keep failing, indices wait in the delete phase and the disk fills up instead of data
 being lost. Check:
 
 ```bash
 curl -s $CA -u "$AUTH" "$ES/_slm/policy/esm-daily?filter_path=*.last_success,*.last_failure&pretty"
-curl -s $CA -u "$AUTH" "$ES/logs-*/_ilm/explain?filter_path=indices.*.step,indices.*.step_info&pretty"   | grep -B1 -A2 wait-for-snapshot
+curl -s $CA -u "$AUTH" "$ES/logs-*/_ilm/explain?filter_path=indices.*.step,indices.*.step_info&pretty" \
+  | grep -B1 -A2 wait-for-snapshot
+```
+
+Restore a data stream's backing indices from the latest snapshot. They are renamed so they do not
+clash with live data, made visible (backing indices are hidden), and left out of ILM, which would
+otherwise delete them at once because they are older than `RETENTION_DAYS`:
+
+```bash
+SNAP=$(curl -s $CA -u "$AUTH" "$ES/_cat/snapshots/esm-snapshots?h=id&s=end_epoch" | tail -1)
+curl -s $CA -u "$AUTH" -X POST "$ES/_snapshot/esm-snapshots/$SNAP/_restore" -H 'Content-Type: application/json' \
+  -d '{"indices": ".ds-logs-system.syslog-default-*", "rename_pattern": "(.+)", "rename_replacement": "restored-$1",
+       "index_settings": {"index.hidden": false}, "ignore_index_settings": ["index.lifecycle.name"]}'
 ```

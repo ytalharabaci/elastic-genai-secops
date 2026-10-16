@@ -28,6 +28,11 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **On-prem snapshots**: `content/bootstrap.sh` registers repository `esm-snapshots` and SLM policy
+  `esm-daily` when `SNAPSHOT_REPOSITORY_TYPE` (`fs` or `s3`) is set. Compose gets `snapshots-fs.yml`
+  and `snapshots-s3.yml` (with an `s3-lab` SeaweedFS profile), Kubernetes the optional
+  `components/snapshots-s3` (ECK `secureSettings`), and the bare-metal installer
+  `SNAPSHOT_REPO_PATH`.
 - **Snapshot before delete**: with `SNAPSHOT_POLICY` set, `content/bootstrap.sh` adds
   `wait_for_snapshot` to the delete phase of `esm-logs`, so an index leaves the hot tier only after
   that SLM policy has snapshotted it. The `gke` overlay sets `esm-daily`; compose and bare metal

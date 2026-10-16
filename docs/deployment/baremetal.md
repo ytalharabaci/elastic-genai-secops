@@ -32,6 +32,7 @@ Optional settings, passed as environment variables:
 | `ELASTIC_VERSION` | `8.13.4` | Version installed and held with `apt-mark hold` |
 | `RETENTION_DAYS` | `90` | Logs and metrics are deleted after this many days |
 | `SNAPSHOT_POLICY` | none | Existing SLM policy that must snapshot an index before it is deleted ([snapshots](../components/elasticsearch.md#snapshots)) |
+| `SNAPSHOT_REPO_PATH` | none | Shared directory or NFS mount for snapshots: adds it to `path.repo`, registers repository `esm-snapshots` and policy `esm-daily` |
 | `KIBANA_BIND` | `0.0.0.0` | Interface Kibana listens on |
 | `ES_NAMESPACE` | `default` | Data stream namespace (`logs-<dataset>-<namespace>`) |
 | `FORTIGATE_TZ`, `PANOS_TZ` | `UTC` | Time zone of the firewall clocks (e.g. `Europe/Istanbul`); a wrong value shifts events out of the rules' time window |
