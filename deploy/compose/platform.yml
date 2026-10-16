@@ -140,7 +140,7 @@ services:
     environment:
       <<: *platform-es
       MCP_TRANSPORT: http
-      MCP_TOKEN: ${MCP_TOKEN:?set MCP_TOKEN in .env (run init-env)}
+      ANALYST_TOKENS: ${ANALYST_TOKENS:?set ANALYST_TOKENS in .env (run init-env)}
       MCP_ALLOWED_HOSTS: localhost:*,127.0.0.1:*,mcp-server:*
       CASE_API_URL: http://bff:8080/api
       MASKING_SERVICE_URL: http://masking-service:8001
@@ -153,6 +153,7 @@ services:
     environment:
       CASE_SERVICE_URL: http://case-service:8002
       LISTEN_ADDR: ":8080"
+      ANALYST_TOKENS: ${ANALYST_TOKENS:?set ANALYST_TOKENS in .env (run init-env)}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

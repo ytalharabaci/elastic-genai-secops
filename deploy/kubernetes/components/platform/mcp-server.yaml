@@ -25,8 +25,8 @@ spec:
           env:
             - name: ELASTIC_PASSWORD
               valueFrom: { secretKeyRef: { name: esm-secrets, key: ESM_PLATFORM_PASSWORD } }
-            - name: MCP_TOKEN
-              valueFrom: { secretKeyRef: { name: esm-secrets, key: MCP_TOKEN, optional: true } }
+            - name: ANALYST_TOKENS
+              valueFrom: { secretKeyRef: { name: esm-secrets, key: ANALYST_TOKENS } }
             - { name: HUNTS_FILE, value: /app/content/hunting/hunts.yml }
           ports:
             - { name: http, containerPort: 8090 }

@@ -451,7 +451,7 @@ jobs:
       - name: MCP server test (read-only, masked)
         run: |
           python3 -m venv /tmp/mcp && /tmp/mcp/bin/pip install -q 'mcp>=2.3,<3'
-          MCP_TOKEN="$(grep '^MCP_TOKEN=' deploy/compose/.env | cut -d= -f2-)" \
+          ANALYST_TOKEN="$(sed -n 's/^ANALYST_TOKENS=[^:]*:\([^,]*\).*/\1/p' deploy/compose/.env)" \
             MCP_URL=http://localhost:8090/mcp /tmp/mcp/bin/python tests/e2e/mcp_client_test.py
       - name: Collect stack logs
         if: always()

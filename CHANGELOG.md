@@ -36,6 +36,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Analyst tokens** (ADR-028): bff requires a bearer token from `ANALYST_TOKENS` and records
+  reviews under the token's analyst instead of the name in the request body; the MCP server
+  accepts the same tokens (replacing `MCP_TOKEN`), logs every tool call with the analyst and reads
+  cases from bff with the caller's token. `init-env` / `init-secrets` keep an existing `MCP_TOKEN`.
 - **Kubernetes NetworkPolicies** (`components/network-policies`, in every overlay): ingress is
   denied unless listed, and nats, detection-service, alert-gateway, masking-service, case-service,
   bff and mcp-server can reach only pods in the namespace and DNS.

@@ -13,6 +13,8 @@ import subprocess
 
 from mcp.server.mcpserver import MCPServer
 
+from app.auth import audit
+
 _FIELDS = ("AMServiceEnabled", "AntivirusEnabled", "AntispywareEnabled",
            "RealTimeProtectionEnabled", "BehaviorMonitorEnabled", "IoavProtectionEnabled",
            "AntivirusSignatureLastUpdated", "AntivirusSignatureVersion", "QuickScanAge",
@@ -38,4 +40,5 @@ def register(mcp: MCPServer) -> None:
     @mcp.tool()
     def get_defender_status() -> str:
         """Microsoft Defender protection and signature status of this Windows machine."""
+        audit("get_defender_status")
         return json.dumps(defender_status(), indent=2, default=str)

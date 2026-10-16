@@ -128,7 +128,8 @@ docker compose -f siem.yml -f platform.yml up -d --build
 python ../../tests/e2e/pipeline_test.py        # optional end-to-end check
 ```
 
-Cases are served at <http://localhost:8080/api/cases>.
+Cases are served at <http://localhost:8080/api/cases> to analysts with a token from
+`ANALYST_TOKENS` in `.env` (`Authorization: Bearer <token>`).
 The same stack exposes a read-only, masked [MCP server](docs/genai/mcp-server.md) on
 `http://localhost:8090/mcp` for Claude Desktop, Claude Code and other MCP clients.
 

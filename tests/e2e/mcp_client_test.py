@@ -2,7 +2,7 @@
 
 Run inside the compose network after pipeline_test.py has created at least one case:
     docker run --rm --network esm-siem_default -v "$PWD:/src" -w /src \
-      -e MCP_URL=http://mcp-server:8090/mcp -e MCP_TOKEN=... python:3.14-slim \
+      -e MCP_URL=http://mcp-server:8090/mcp -e ANALYST_TOKEN=... python:3.14-slim \
       sh -c "pip install -q 'mcp>=2.3,<3' && python tests/e2e/mcp_client_test.py"
 """
 
@@ -19,7 +19,7 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 URL = os.getenv("MCP_URL", "http://localhost:8090/mcp")
-TOKEN = os.environ["MCP_TOKEN"]
+TOKEN = os.environ["ANALYST_TOKEN"]  # one analyst's token from ANALYST_TOKENS
 PLAINTEXT = re.compile(r"E2E-PC-|e2e-user-|PC-LAB-01")  # identifiers written by the e2e tests
 
 

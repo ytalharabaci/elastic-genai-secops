@@ -23,8 +23,9 @@ What the server deliberately does **not** do:
 ## Run it
 
 The compose platform layer starts it on `http://127.0.0.1:8090/mcp` (streamable HTTP). Every request
-needs `Authorization: Bearer <MCP_TOKEN>`; the token is generated into `deploy/compose/.env` by
-`init-env`.
+needs `Authorization: Bearer <token>` with an analyst's token from `ANALYST_TOKENS` (`name:token`
+pairs in `deploy/compose/.env`, created by `init-env`; ADR-028). Each tool call is logged with the
+analyst, and cases are read from bff with the same token.
 
 ```bash
 cd deploy/compose
@@ -35,7 +36,7 @@ docker compose -f siem.yml -f platform.yml up -d --build
 
 ```bash
 claude mcp add --transport http esm http://localhost:8090/mcp \
-  --header "Authorization: Bearer <MCP_TOKEN from deploy/compose/.env>"
+  --header "Authorization: Bearer <your token from ANALYST_TOKENS>"
 ```
 
 ### Claude Desktop
@@ -49,7 +50,7 @@ Claude Desktop starts local (stdio) servers; bridge to the HTTP endpoint with `m
     "esm": {
       "command": "npx",
       "args": ["mcp-remote", "http://localhost:8090/mcp",
-               "--header", "Authorization: Bearer <MCP_TOKEN>"]
+               "--header", "Authorization: Bearer <your token from ANALYST_TOKENS>"]
     }
   }
 }
@@ -73,7 +74,8 @@ The tool only reads `Get-MpComputerStatus`; scans and settings are not exposed.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `MCP_TRANSPORT` | `stdio` (`http` in the image) | `stdio` or `http` |
-| `MCP_TOKEN` | – | Bearer token for `http`, at least 24 characters |
+| `ANALYST_TOKENS` | – | `http`: accepted analysts, `name:token,...` (tokens of at least 24 characters), same as bff |
+| `ANALYST_TOKEN` | – | `stdio`: the local analyst's token, sent to bff for case reads |
 | `MCP_HOST`, `MCP_PORT` | `0.0.0.0`, `8090` | HTTP listener |
 | `MCP_ALLOWED_HOSTS` | `localhost:*,127.0.0.1:*` | Accepted `Host` headers (DNS-rebinding protection) |
 | `CASE_API_URL` | `http://bff:8080/api` | Case API (bff) |
@@ -89,6 +91,6 @@ The tool only reads `Get-MpComputerStatus`; scans and settings are not exposed.
 cd services/mcp-server && python -m pytest -q tests
 # live check with the official MCP client, inside the compose network
 docker run --rm --network esm-siem_default -v "$PWD:/src" -w /src \
-  -e MCP_URL=http://mcp-server:8090/mcp -e MCP_TOKEN=<token> python:3.14-slim \
+  -e MCP_URL=http://mcp-server:8090/mcp -e ANALYST_TOKEN=<token> python:3.14-slim \
   sh -c "pip install -q 'mcp>=2.3,<3' && python tests/e2e/mcp_client_test.py"
 ```

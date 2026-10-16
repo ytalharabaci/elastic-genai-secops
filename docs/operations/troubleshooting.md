@@ -74,7 +74,7 @@ Follow one incident through the logs: detection-service `alert published` → al
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `401 unauthorized` | Send `Authorization: Bearer <MCP_TOKEN>`. |
+| `401 unauthorized` | Send `Authorization: Bearer <token>` with an analyst's token from `ANALYST_TOKENS` (also for bff `/api`). After an upgrade, run `init-env` (it creates `ANALYST_TOKENS` from the old `MCP_TOKEN`). |
 | `421 Misdirected Request` / `Invalid Host header` | Add the host your client uses to `MCP_ALLOWED_HOSTS` (DNS-rebinding protection). |
 | Hunts return 0 hits | The `esm_platform` role needs read access to `logs-*-*`; re-run the bootstrap after upgrading. |
 

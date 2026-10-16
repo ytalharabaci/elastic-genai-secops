@@ -72,7 +72,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 - [x] Masking reverse-map TTL and deletion after the analyst review (ADR-025)
 - [ ] GCP Pub/Sub bus adapter (`BUS_BACKEND=pubsub`, ADR-017)
 - [ ] Platform metrics into Elastic: LLM cost, request rate, triage latency (design rule 7)
-- [ ] Per-analyst identity and audit for MCP and bff calls
+- [x] Per-analyst identity and audit for MCP and bff calls (ADR-028)
 
 ### Deployment and operations
 
