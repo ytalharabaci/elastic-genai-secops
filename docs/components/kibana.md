@@ -10,7 +10,7 @@ MCP server.
 
 | Target | URL | Login |
 | --- | --- | --- |
-| Compose | <http://localhost:5601> (`KIBANA_BIND` to expose on the LAN) | `elastic` / `ELASTIC_PASSWORD` in `deploy/compose/.env` |
+| Compose | <https://localhost:5601> (`KIBANA_BIND` to expose on the LAN; certificate from the stack's CA, see below) | `elastic` / `ELASTIC_PASSWORD` in `deploy/compose/.env` |
 | Bare metal | `http://<host>:5601` | `elastic` / `/root/esm-credentials` |
 | Kubernetes | `kubectl -n esm port-forward svc/esm-kb-http 5601` or your ingress | `elastic` / secret `esm-es-elastic-user` |
 

@@ -34,6 +34,7 @@ Format per entry: **Decision · Status · Date · Context · Alternatives · Rat
 | [ADR-026](026-right-sized-pipeline.md) | A pipeline sized for a small open-source project |
 | [ADR-027](027-persistent-correlation-windows.md) | Correlation windows in NATS KV, shared by alert-gateway replicas |
 | [ADR-028](028-analyst-tokens.md) | Analyst tokens for the case API and the MCP server |
+| [ADR-029](029-compose-https.md) | HTTPS for Kibana, bff and the MCP server on Docker Compose |
 
 ## Open items to resolve (carry forward)
 

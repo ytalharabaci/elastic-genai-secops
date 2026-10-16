@@ -29,6 +29,7 @@ journalctl -u logstash -n 100 --no-pager
 | Health `yellow` on a single node | Expected: replicas cannot be assigned on one node. |
 | `401` for `elastic` after changing `.env` | The `elastic` password was set when the volume was created. Use the original value, or reset it with `bin/elasticsearch-reset-password -u elastic`. |
 | Disk filling up, old `logs-*` indices not deleted | They wait for a snapshot (`SNAPSHOT_POLICY`). Check the SLM policy's `last_failure` and the repository (see [snapshots](../components/elasticsearch.md#snapshots)); deletion resumes after the next successful snapshot. |
+| Python client: `CA cert does not include key usage extension` | The stack's CA predates ADR-029 (made by `elasticsearch-certutil`). The platform services accept it; for other clients recreate the CA: `docker compose -f siem.yml -f platform.yml down`, `docker volume rm esm-siem_certs`, `up -d` (browsers and clients must then trust the new `ca.crt`). |
 
 ## Compose `.env`
 

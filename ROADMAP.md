@@ -44,7 +44,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 
 ## Known limitations
 
-- **Transport security:** Kibana, the bff API and Beats → Logstash run without TLS by default.
+- **Transport security:** Beats → Logstash runs without TLS; in Kubernetes Kibana, bff and MCP expect TLS at an ingress (no example yet). Compose serves them over HTTPS (ADR-029).
 - **Kubernetes:** no Ingress or HPA; `detection-service` must stay at one replica.
 - **Snapshots:** off by default outside `gke`; enable them per target (docs/components/elasticsearch.md).
 - **Logstash API** runs without TLS inside Kubernetes (ECK 3.5 + Logstash 8.13 TLS API issue).

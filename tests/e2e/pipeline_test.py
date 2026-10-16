@@ -6,7 +6,7 @@ Compose:
 Kubernetes (port-forward svc/esm-es-http 9200 and svc/bff 8080 first):
     ELASTIC_PASSWORD=$(kubectl -n esm get secret esm-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d) \
       python tests/e2e/pipeline_test.py
-ES_URL and BFF_URL override the default https://localhost:9200 and http://localhost:8080.
+ES_URL and BFF_URL override the default https://localhost:9200 and https://localhost:8080.
 
 Writes five synthetic Sysmon "Office spawned PowerShell" events for one host and user, then waits
 for: Kibana rule WIN-001 alerts -> detection-service -> alert-gateway (threshold 5) -> enrichment +
@@ -45,7 +45,7 @@ def analyst_token() -> tuple[str, str]:
 
 
 ES = os.getenv("ES_URL", "https://localhost:9200").rstrip("/")
-BFF = os.getenv("BFF_URL", "http://localhost:8080").rstrip("/")
+BFF = os.getenv("BFF_URL", "https://localhost:8080").rstrip("/")
 AUTH = "Basic " + base64.b64encode(f"elastic:{_setting('ELASTIC_PASSWORD')}".encode()).decode()
 ANALYST, _token = analyst_token()
 ANALYST_AUTH = f"Bearer {_token}"

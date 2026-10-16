@@ -6,7 +6,7 @@ info:
   version: "0.1.0"
   description: Thin analyst API. Case reads and reviews are forwarded to case-service.
 servers:
-  - url: http://localhost:8080
+  - url: https://localhost:8080
 # /api needs an analyst token from ANALYST_TOKENS (ADR-028); /healthz is open
 security:
   - analystToken: []

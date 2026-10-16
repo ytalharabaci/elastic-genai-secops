@@ -22,7 +22,8 @@ What the server deliberately does **not** do:
 
 ## Run it
 
-The compose platform layer starts it on `http://127.0.0.1:8090/mcp` (streamable HTTP). Every request
+The compose platform layer starts it on `https://127.0.0.1:8090/mcp` (streamable HTTP over TLS, with a
+certificate from the stack's CA, see [Trusting the stack's CA](#trusting-the-stacks-ca)). Every request
 needs `Authorization: Bearer <token>` with an analyst's token from `ANALYST_TOKENS` (`name:token`
 pairs in `deploy/compose/.env`, created by `init-env`; ADR-028). Each tool call is logged with the
 analyst, and cases are read from bff with the same token.
@@ -35,9 +36,12 @@ docker compose -f siem.yml -f platform.yml up -d --build
 ### Claude Code
 
 ```bash
-claude mcp add --transport http esm http://localhost:8090/mcp \
+claude mcp add --transport http esm https://localhost:8090/mcp \
   --header "Authorization: Bearer <your token from ANALYST_TOKENS>"
 ```
+
+Start Claude Code with `NODE_EXTRA_CA_CERTS=/path/to/esm-ca.crt` so it trusts the stack's CA
+([below](#trusting-the-stacks-ca)).
 
 ### Claude Desktop
 
@@ -49,11 +53,22 @@ Claude Desktop starts local (stdio) servers; bridge to the HTTP endpoint with `m
   "mcpServers": {
     "esm": {
       "command": "npx",
-      "args": ["mcp-remote", "http://localhost:8090/mcp",
+      "env": { "NODE_EXTRA_CA_CERTS": "/path/to/esm-ca.crt" },
+      "args": ["mcp-remote", "https://localhost:8090/mcp",
                "--header", "Authorization: Bearer <your token from ANALYST_TOKENS>"]
     }
   }
 }
+```
+
+### Trusting the stack's CA
+
+Kibana, bff and the MCP server use certificates from the CA the `certs` service creates. Copy it
+out once and point clients at it (Node-based clients read `NODE_EXTRA_CA_CERTS`):
+
+```bash
+cd deploy/compose
+docker compose -f siem.yml cp elasticsearch:/usr/share/elasticsearch/config/certs/ca/ca.crt esm-ca.crt
 ```
 
 ### Defender endpoint mode (optional)
@@ -77,8 +92,9 @@ The tool only reads `Get-MpComputerStatus`; scans and settings are not exposed.
 | `ANALYST_TOKENS` | – | `http`: accepted analysts, `name:token,...` (tokens of at least 24 characters), same as bff |
 | `ANALYST_TOKEN` | – | `stdio`: the local analyst's token, sent to bff for case reads |
 | `MCP_HOST`, `MCP_PORT` | `0.0.0.0`, `8090` | HTTP listener |
+| `MCP_TLS_CERT_FILE`, `MCP_TLS_KEY_FILE` | – | Serve HTTPS (compose sets both; in Kubernetes TLS ends at the ingress) |
 | `MCP_ALLOWED_HOSTS` | `localhost:*,127.0.0.1:*` | Accepted `Host` headers (DNS-rebinding protection) |
-| `CASE_API_URL` | `http://bff:8080/api` | Case API (bff) |
+| `CASE_API_URL` | `http://bff:8080/api` (`https://` in compose) | Case API (bff), verified against `ELASTIC_CA_CERTS` |
 | `MASKING_SERVICE_URL` | `http://masking-service:8001` | Source of the incident tokens |
 | `ELASTIC_URL`, `ELASTIC_USER`, `ELASTIC_PASSWORD`, `ELASTIC_CA_CERTS` | | Read access for alert statistics and hunts (`esm_platform` user) |
 | `HUNTS_FILE` | `content/hunting/hunts.yml` | Hunt allow-list |

@@ -41,14 +41,15 @@ docker compose -f siem.yml -f platform.yml up -d --build
 python ../../tests/e2e/pipeline_test.py   # optional end-to-end check (about 5-10 minutes)
 ```
 
-Cases: `GET http://localhost:8080/api/cases?review_status=pending`, details at `/api/cases/{id}`,
+Cases: `GET https://localhost:8080/api/cases?review_status=pending`, details at `/api/cases/{id}`,
 analyst decision with `POST /api/cases/{id}/review` and `{"status": "approved|rejected", "notes": "..."}`.
 Every `/api` request needs `Authorization: Bearer <token>` from `ANALYST_TOKENS`; the review is
 recorded under that token's analyst (ADR-028):
 
 ```bash
 TOKEN=$(sed -n 's/^ANALYST_TOKENS=[^:]*:\([^,]*\).*/\1/p' .env)   # the first analyst
-curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/cases?review_status=pending"
+docker compose -f siem.yml cp elasticsearch:/usr/share/elasticsearch/config/certs/ca/ca.crt esm-ca.crt
+curl --cacert esm-ca.crt -H "Authorization: Bearer $TOKEN" "https://localhost:8080/api/cases?review_status=pending"
 ```
 
 ## Choosing the LLM

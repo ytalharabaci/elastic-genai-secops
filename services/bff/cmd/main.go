@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"net/http"
 	"net/url"
@@ -34,13 +35,22 @@ func main() {
 		Addr:              envx.String("LISTEN_ADDR", ":8080"),
 		Handler:           api.Handler(caseURL, analysts, log),
 		ReadHeaderTimeout: 10 * time.Second,
+		TLSConfig:         &tls.Config{MinVersion: tls.VersionTLS12},
 	}
+	// HTTPS when a certificate is configured (compose); in Kubernetes TLS ends at the ingress
+	certFile, keyFile := os.Getenv("TLS_CERT_FILE"), os.Getenv("TLS_KEY_FILE")
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	go func() {
-		log.Info("bff listening", "addr", srv.Addr, "case_service", caseURL.String())
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Info("bff listening", "addr", srv.Addr, "tls", certFile != "", "case_service", caseURL.String())
+		var err error
+		if certFile != "" {
+			err = srv.ListenAndServeTLS(certFile, keyFile)
+		} else {
+			err = srv.ListenAndServe()
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("bff listen error", "error", err)
 			stop()
 		}

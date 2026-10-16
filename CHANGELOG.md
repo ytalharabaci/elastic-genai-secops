@@ -36,6 +36,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **HTTPS on Compose** (ADR-029): Kibana, bff and the MCP server serve HTTPS with certificates from
+  the stack's CA, which the `certs` service adds to existing volumes; new CAs carry keyUsage so
+  Python 3.13+ clients accept them. bff and the MCP server take `TLS_CERT_FILE`/`TLS_KEY_FILE` and
+  `MCP_TLS_CERT_FILE`/`MCP_TLS_KEY_FILE`; the e2e tests run against HTTPS.
 - **Analyst tokens** (ADR-028): bff requires a bearer token from `ANALYST_TOKENS` and records
   reviews under the token's analyst instead of the name in the request body; the MCP server
   accepts the same tokens (replacing `MCP_TOKEN`), logs every tool call with the analyst and reads
