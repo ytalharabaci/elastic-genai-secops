@@ -32,6 +32,7 @@ Format per entry: **Decision · Status · Date · Context · Alternatives · Rat
 | [ADR-024](024-staging-production-pipeline.md) | `staging` → `production` branch flow and a single DevSecOps pipeline |
 | [ADR-025](025-masking-reverse-map-lifecycle.md) | Reverse-map lifecycle: delete after review, TTL as a backstop |
 | [ADR-026](026-right-sized-pipeline.md) | A pipeline sized for a small open-source project |
+| [ADR-027](027-persistent-correlation-windows.md) | Correlation windows in NATS KV, shared by alert-gateway replicas |
 
 ## Open items to resolve (carry forward)
 

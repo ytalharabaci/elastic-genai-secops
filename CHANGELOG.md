@@ -28,6 +28,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Persistent correlation** (ADR-027): alert-gateway keeps open correlation windows in the NATS
+  key-value bucket `esm-correlation` with compare-and-set writes, so windows survive restarts and
+  several replicas can share the `alert-gateway` consumer. A window is closed, published and then
+  deleted; a failed publish is retried by the next ingest or flush instead of losing the alerts.
 - **Snapshot before delete**: with `SNAPSHOT_POLICY` set, `content/bootstrap.sh` adds
   `wait_for_snapshot` to the delete phase of `esm-logs`, so an index leaves the hot tier only after
   that SLM policy has snapshotted it. The `gke` overlay sets `esm-daily`; compose and bare metal

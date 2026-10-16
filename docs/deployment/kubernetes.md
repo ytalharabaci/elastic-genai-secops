@@ -109,6 +109,7 @@ Edit `LLM_PROVIDER`, `LLM_MODEL_ID` and `LLM_BASE_URL` in the `esm-platform-conf
 
 ## Limits
 
-- `alert-gateway` and `detection-service` must run with one replica (in-memory correlation, single checkpoint).
+- `detection-service` must run with one replica (it owns the alert checkpoint). `alert-gateway` can
+  scale out: its correlation windows are in the NATS bucket `esm-correlation` (ADR-027).
 - No NetworkPolicies yet; restrict access to `masking-service` before production.
 - No Fleet / Elastic Agent resources yet (planned).

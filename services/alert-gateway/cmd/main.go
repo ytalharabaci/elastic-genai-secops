@@ -31,10 +31,13 @@ func main() {
 	}
 	defer b.Close()
 
-	threshold := envx.Int("CORRELATION_THRESHOLD", 5)
-	window := envx.Duration("CORRELATION_WINDOW", 10*time.Minute)
-	correlator := incident.NewCorrelator(threshold, window)
+	store, err := windowStore(ctx, b)
+	if err != nil {
+		log.Error("correlation store", "error", err)
+		os.Exit(1)
+	}
 
+	// The incident ID is the message ID, so publishing a window twice is deduplicated.
 	publish := func(ctx context.Context, inc *contracts.Incident) error {
 		if err := b.Publish(ctx, contracts.SubjectIncidents, inc.ID, inc); err != nil {
 			return err
@@ -43,7 +46,11 @@ func main() {
 		return nil
 	}
 
-	go flushLoop(ctx, log, correlator, publish)
+	threshold := envx.Int("CORRELATION_THRESHOLD", 5)
+	window := envx.Duration("CORRELATION_WINDOW", 10*time.Minute)
+	correlator := incident.NewCorrelator(store, publish, threshold, window)
+
+	go flushLoop(ctx, log, correlator)
 
 	log.Info("alert-gateway started", "threshold", threshold, "window", window.String())
 	err = b.Subscribe(ctx, contracts.SubjectAlerts, "alert-gateway", func(ctx context.Context, data []byte) error {
@@ -52,10 +59,8 @@ func main() {
 			log.Error("invalid alert message, dropping", "error", err)
 			return nil
 		}
-		if inc := correlator.Ingest(&a); inc != nil {
-			if err := publish(ctx, inc); err != nil {
-				return fmt.Errorf("publish incident: %w", err)
-			}
+		if err := correlator.Ingest(ctx, &a); err != nil {
+			return fmt.Errorf("correlate alert %s: %w", a.ID, err)
 		}
 		return nil
 	})
@@ -66,10 +71,23 @@ func main() {
 	log.Info("alert-gateway stopped")
 }
 
-// flushLoop emits incidents whose correlation window expired before reaching the threshold.
-// Note: open buckets live in memory; alerts of an unfinished window are lost on restart
-// (they are acknowledged on ingest). Persisting buckets is tracked in ROADMAP.md.
-func flushLoop(ctx context.Context, log *slog.Logger, c *incident.Correlator, publish func(context.Context, *contracts.Incident) error) {
+// windowStore keeps open correlation windows in the NATS key-value bucket esm-correlation, so
+// they survive restarts and replicas share them (ADR-027).
+func windowStore(ctx context.Context, b bus.Bus) (incident.Store, error) {
+	n, ok := b.(*bus.NATS)
+	if !ok {
+		return nil, fmt.Errorf("bus %T has no key-value store", b)
+	}
+	kv, err := n.KeyValue(ctx, "esm-correlation")
+	if err != nil {
+		return nil, err
+	}
+	return incident.NewKVStore(kv), nil
+}
+
+// flushLoop publishes incidents whose correlation window expired before reaching the threshold.
+// Every replica runs it; compare-and-set on the store lets only one of them close a window.
+func flushLoop(ctx context.Context, log *slog.Logger, c *incident.Correlator) {
 	t := time.NewTicker(15 * time.Second)
 	defer t.Stop()
 	for {
@@ -77,10 +95,8 @@ func flushLoop(ctx context.Context, log *slog.Logger, c *incident.Correlator, pu
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			for _, inc := range c.Flush() {
-				if err := publish(ctx, inc); err != nil {
-					log.Error("incident publish failed", "incident_id", inc.ID, "error", err)
-				}
+			if err := c.Flush(ctx); err != nil && ctx.Err() == nil {
+				log.Error("correlation flush", "error", err)
 			}
 		}
 	}
