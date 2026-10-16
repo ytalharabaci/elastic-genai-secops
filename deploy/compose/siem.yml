@@ -16,6 +16,8 @@ services:
   certs:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:-8.13.4}
     user: "0"
+    environment:
+      - LOGSTASH_TLS_SANS=${LOGSTASH_TLS_SANS:-}
     volumes:
       - certs:/certs
     entrypoint: ["bash", "-c"]
@@ -43,11 +45,28 @@ services:
           printf '  - name: %s\n    dns: [%s, localhost]\n    ip: [127.0.0.1]\n' "$${svc}" "$${svc}" >> /certs/instances.yml
           missing=1
         done
+        # Logstash also needs the names and IPv4 addresses the Beats connect to
+        # (LOGSTASH_TLS_SANS, comma-separated); a changed list re-issues its certificate
+        sans="$${LOGSTASH_TLS_SANS:-}"
+        if [ ! -f /certs/logstash/logstash.crt ] || [ "$$(cat /certs/logstash/sans 2>/dev/null)" != "$${sans}" ]; then
+          rm -rf /certs/logstash
+          dns="logstash, localhost"; ip="127.0.0.1"
+          for s in $$(echo "$${sans}" | tr ',' ' '); do
+            case "$${s}" in *[!0-9.]*) dns="$${dns}, $${s}" ;; *) ip="$${ip}, $${s}" ;; esac
+          done
+          printf '  - name: logstash\n    dns: [%s]\n    ip: [%s]\n' "$${dns}" "$${ip}" >> /certs/instances.yml
+          missing=1
+        fi
         if [ "$${missing}" = 1 ]; then
           rm -f /certs/certs.zip   # left by earlier versions; certutil will not overwrite it
           bin/elasticsearch-certutil cert --silent --pem --in /certs/instances.yml -out /certs/certs.zip --ca-cert /certs/ca/ca.crt --ca-key /certs/ca/ca.key
           unzip -q -o /certs/certs.zip -d /certs
           rm -f /certs/certs.zip
+        fi
+        if [ ! -f /certs/logstash/logstash.pkcs8.key ]; then
+          # The Logstash beats input reads PKCS#8 keys only
+          openssl pkcs8 -topk8 -nocrypt -in /certs/logstash/logstash.key -out /certs/logstash/logstash.pkcs8.key
+          printf '%s' "$${sans}" > /certs/logstash/sans
         fi
         chown -R 1000:0 /certs
         # Certificates are public and read by every service; private keys stay with their service
@@ -177,6 +196,10 @@ services:
       - PANOS_TZ=${PANOS_TZ:-UTC}
       - LS_JAVA_OPTS=-Xms${LS_HEAP:-512m} -Xmx${LS_HEAP:-512m}
       - XPACK_MONITORING_ENABLED=false
+      # TLS on the beats inputs (5044-5047); turn it on together with the Beats' ssl settings
+      - BEATS_TLS=${BEATS_TLS:-false}
+      - BEATS_TLS_CERT=/usr/share/logstash/certs/logstash/logstash.crt
+      - BEATS_TLS_KEY=/usr/share/logstash/certs/logstash/logstash.pkcs8.key
     volumes:
       - certs:/usr/share/logstash/certs:ro
       - ../../integrations/sources:/etc/logstash/conf.d:ro

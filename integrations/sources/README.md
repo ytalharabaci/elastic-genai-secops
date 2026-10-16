@@ -70,6 +70,26 @@ On the bare-metal install Elasticsearch listens on localhost only; use an SSH tu
 
 Sysmon configuration: [`windows/sysmon/sysmon.xml`](windows/sysmon/sysmon.xml).
 
+## TLS from the Beats
+
+The beats inputs (5044-5047) accept TLS when Logstash runs with `BEATS_TLS=true`. Turn it on
+together with the Beats' `ssl` settings: a Beat without TLS cannot talk to a TLS input, and the
+other way round. Syslog inputs (5514-5517) stay plain because most devices send UDP syslog.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `BEATS_TLS` | `false` | TLS on the beats inputs |
+| `BEATS_TLS_CERT`, `BEATS_TLS_KEY` | (see below) | Certificate and **PKCS#8** key of Logstash. Logstash checks both paths exist even with TLS off, so without TLS they point at the ES CA |
+| `LOGSTASH_TLS_SANS` (Compose) | – | Host names and IPv4 addresses the Beats connect to, comma-separated; a changed list re-issues the certificate |
+
+**Compose:** set `BEATS_TLS=true` and `LOGSTASH_TLS_SANS=siem.example.local,10.0.0.20` in `.env`, then
+`docker compose -f siem.yml up -d`. The `certs` service issues the Logstash certificate from the
+stack's CA. **Windows endpoints:** build the share with `prepare-share.ps1 -CaCert <ca.crt>`
+([windows-endpoints.md](../../docs/integrations/windows-endpoints.md)); the configurations then
+verify Logstash against that CA. **Linux Beats** (Filebeat on the Palo Alto or Kaspersky
+collector): set `ssl.enabled: true` and `ssl.certificate_authorities: ["/etc/esm/ca.crt"]` under
+`output.logstash`. Bare metal and Kubernetes run the inputs without TLS for now (ROADMAP.md).
+
 ## Palo Alto: two options
 
 - **Syslog direct** (simplest): point a PAN-OS syslog server profile at port 5517. TRAFFIC and THREAT
