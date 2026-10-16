@@ -32,6 +32,9 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Kubernetes NetworkPolicies** (`components/network-policies`, in every overlay): ingress is
+  denied unless listed, and nats, detection-service, alert-gateway, masking-service, case-service,
+  bff and mcp-server can reach only pods in the namespace and DNS.
 - **Beats ingest pipelines in the bootstrap**: `content/bootstrap.sh` loads the Winlogbeat and
   Filebeat `panw` ingest pipelines for the stack version (`BEATS_VERSIONS`), downloaded from
   artifacts.elastic.co (or `BEATS_ARTIFACTS_URL`) and SHA-512 checked, replacing the manual

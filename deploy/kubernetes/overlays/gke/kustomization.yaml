@@ -18,6 +18,7 @@ resources:
   - gcs-snapshot-job.yaml
 components:
   - ../../components/platform
+  - ../../components/network-policies
   - ../../components/production
 
 secretGenerator:

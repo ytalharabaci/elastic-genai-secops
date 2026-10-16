@@ -45,7 +45,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 ## Known limitations
 
 - **Transport security:** Kibana, the bff API and Beats → Logstash run without TLS by default.
-- **Kubernetes:** no NetworkPolicies, Ingress or HPA; `detection-service` must stay at one replica.
+- **Kubernetes:** no Ingress or HPA; `detection-service` must stay at one replica.
 - **Snapshots:** off by default outside `gke`; enable them per target (docs/components/elasticsearch.md).
 - **Logstash API** runs without TLS inside Kubernetes (ECK 3.5 + Logstash 8.13 TLS API issue).
 - **Parsing:** Kaspersky events are stored but not parsed; no web server log source (WEB-* rules ship disabled).
@@ -77,7 +77,8 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 ### Deployment and operations
 
 - [ ] TLS and authentication in front of Kibana, bff and MCP (Ingress / reverse proxy examples)
-- [ ] Kubernetes NetworkPolicies, HPA for stateless services, Helm chart
+- [x] Kubernetes NetworkPolicies: deny-by-default ingress, no outbound access for internal services
+- [ ] HPA for stateless services, Helm chart
 - [x] `wait_for_snapshot` in ILM when `SNAPSHOT_POLICY` is set (on in the `gke` overlay)
 - [x] Snapshot repositories for on-prem: S3-compatible and shared FS on Compose, `onprem` and bare metal
 - [ ] Bare-metal installer run in CI on an Ubuntu 22.04 VM; platform services as systemd units

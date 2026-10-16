@@ -1,0 +1,22 @@
+# Egress: services that only talk to other pods in the namespace cannot open connections to
+# anything else, so a compromised masking-service or case-service cannot send data out.
+# Not restricted: Elasticsearch (snapshot storage), Kibana, Logstash, the setup Jobs (Beats
+# packages), enrichment-service (threat intel), llm-orchestrator (LLM provider) and
+# outbound-service (Slack, Teams, SMTP, TheHive, Jira); their destinations depend on the site.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: namespace-only-egress
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [nats, detection-service, alert-gateway, masking-service, case-service, bff, mcp-server]
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector: {}
+    - ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
