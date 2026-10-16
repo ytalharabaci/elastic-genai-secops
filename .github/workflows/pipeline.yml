@@ -42,7 +42,7 @@ concurrency:
 
 env:
   GO_VERSION: "1.26"
-  PYTHON_VERSION: "3.12"
+  PYTHON_VERSION: "3.14"
   LLM_PROVIDER: mock
   TRIVY_VERSION: v0.75.0
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/elastic-genai-secops
@@ -438,7 +438,7 @@ jobs:
         run: python3 tests/e2e/pipeline_test.py
       - name: MCP server test (read-only, masked)
         run: |
-          python3 -m venv /tmp/mcp && /tmp/mcp/bin/pip install -q 'mcp>=1.9,<2'
+          python3 -m venv /tmp/mcp && /tmp/mcp/bin/pip install -q 'mcp>=2.3,<3'
           MCP_TOKEN="$(grep '^MCP_TOKEN=' deploy/compose/.env | cut -d= -f2-)" \
             MCP_URL=http://localhost:8090/mcp /tmp/mcp/bin/python tests/e2e/mcp_client_test.py
       - name: Collect stack logs
