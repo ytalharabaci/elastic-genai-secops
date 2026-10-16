@@ -57,5 +57,6 @@ being lost. Check:
 
 ```bash
 curl -s $CA -u "$AUTH" "$ES/_slm/policy/esm-daily?filter_path=*.last_success,*.last_failure&pretty"
-curl -s $CA -u "$AUTH" "$ES/logs-*/_ilm/explain?filter_path=indices.*.step,indices.*.step_info&pretty"   | grep -B1 -A2 wait-for-snapshot
+curl -s $CA -u "$AUTH" "$ES/logs-*/_ilm/explain?filter_path=indices.*.step,indices.*.step_info&pretty" \
+  | grep -B1 -A2 wait-for-snapshot
 ```
