@@ -32,6 +32,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Persistent correlation** (ADR-027): alert-gateway keeps open correlation windows in the NATS
+  key-value bucket `esm-correlation` with compare-and-set writes, so windows survive restarts and
+  several replicas can share the `alert-gateway` consumer. A window is closed, published and then
+  deleted; a failed publish is retried by the next ingest or flush instead of losing the alerts.
 - **SIEM profile** on three targets: Docker Compose (`deploy/compose/siem.yml`), bare-metal Ubuntu
   22.04 installer, Kubernetes with ECK 3.5 and kustomize (`lab`, `onprem`, `gke` overlays).
 - **Log sources** (`integrations/sources`): Windows (Winlogbeat, WEF, Sysmon), FortiGate, Palo Alto
