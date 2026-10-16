@@ -24,9 +24,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	analysts, err := api.ParseAnalysts(os.Getenv("ANALYST_TOKENS"))
+	if err != nil {
+		log.Error("analyst tokens", "error", err)
+		os.Exit(1)
+	}
+
 	srv := &http.Server{
 		Addr:              envx.String("LISTEN_ADDR", ":8080"),
-		Handler:           api.Handler(caseURL),
+		Handler:           api.Handler(caseURL, analysts, log),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

@@ -16,7 +16,11 @@ while IFS= read -r line || [ -n "$line" ]; do
   key="${line%%=*}"
   grep -q "^${key}=" .env && continue
   case "$line" in
-    KIBANA_ENCRYPTION_KEY=__GENERATE__|MCP_TOKEN=__GENERATE__) echo "${key}=$(gen 48)" >> .env ;;
+    KIBANA_ENCRYPTION_KEY=__GENERATE__) echo "${key}=$(gen 48)" >> .env ;;
+    # Keeps the token of an older .env's MCP_TOKEN, so connected MCP clients keep working
+    *=__GENERATE_ANALYST__)
+      token="$(sed -n 's/^MCP_TOKEN=//p' .env)"
+      echo "${key}=analyst:${token:-$(gen 48)}" >> .env ;;
     *=__GENERATE__) echo "${key}=$(gen 24)" >> .env ;;
     *) echo "$line" >> .env ;;
   esac

@@ -42,7 +42,14 @@ python ../../tests/e2e/pipeline_test.py   # optional end-to-end check (about 5-1
 ```
 
 Cases: `GET http://localhost:8080/api/cases?review_status=pending`, details at `/api/cases/{id}`,
-analyst decision with `POST /api/cases/{id}/review` and `{"status": "approved|rejected", "analyst": "...", "notes": "..."}`.
+analyst decision with `POST /api/cases/{id}/review` and `{"status": "approved|rejected", "notes": "..."}`.
+Every `/api` request needs `Authorization: Bearer <token>` from `ANALYST_TOKENS`; the review is
+recorded under that token's analyst (ADR-028):
+
+```bash
+TOKEN=$(sed -n 's/^ANALYST_TOKENS=[^:]*:\([^,]*\).*/\1/p' .env)   # the first analyst
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/cases?review_status=pending"
+```
 
 ## Choosing the LLM
 

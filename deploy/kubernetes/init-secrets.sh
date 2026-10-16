@@ -14,6 +14,8 @@ add() { grep -q "^$1=" "$file" || echo "$1=$2" >> "$file"; }
 
 add LOGSTASH_INGEST_PASSWORD "$(gen 24)"
 add ESM_PLATFORM_PASSWORD "$(gen 24)"
-add MCP_TOKEN "$(gen 48)"
+# One analyst to start with; add name:token pairs per person (ADR-028). An older MCP_TOKEN is kept.
+token="$(sed -n 's/^MCP_TOKEN=//p' "$file")"
+add ANALYST_TOKENS "analyst:${token:-$(gen 48)}"
 add LLM_API_KEY ""
 echo "wrote $file (set LLM_API_KEY there when LLM_PROVIDER is not mock)"

@@ -30,17 +30,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def _elastic_password() -> str:
-    if pw := os.getenv("ELASTIC_PASSWORD"):
-        return pw
+def _setting(key: str) -> str:
+    if value := os.getenv(key):
+        return value
     env = dict(line.split("=", 1) for line in (ROOT / "deploy/compose/.env").read_text().splitlines()
                if "=" in line and not line.startswith("#"))
-    return env["ELASTIC_PASSWORD"]
+    return env[key]
+
+
+def analyst_token() -> tuple[str, str]:
+    """The first analyst in ANALYST_TOKENS (name:token,...) from the environment or .env."""
+    name, _, token = _setting("ANALYST_TOKENS").split(",")[0].strip().partition(":")
+    return name, token
 
 
 ES = os.getenv("ES_URL", "https://localhost:9200").rstrip("/")
 BFF = os.getenv("BFF_URL", "http://localhost:8080").rstrip("/")
-AUTH = "Basic " + base64.b64encode(f"elastic:{_elastic_password()}".encode()).decode()
+AUTH = "Basic " + base64.b64encode(f"elastic:{_setting('ELASTIC_PASSWORD')}".encode()).decode()
+ANALYST, _token = analyst_token()
+ANALYST_AUTH = f"Bearer {_token}"
 CTX = ssl._create_unverified_context()  # local stack with a self-signed CA
 TIMEOUT = 15 * 60
 
@@ -48,11 +56,10 @@ RUN = uuid.uuid4().hex[:6]
 HOST, USER = f"E2E-PC-{RUN}", f"e2e-user-{RUN}"
 
 
-def call(url: str, body: object | None = None, method: str | None = None, auth: bool = True):
+def call(url: str, body: object | None = None, method: str | None = None, auth: str = AUTH):
     data = json.dumps(body).encode() if isinstance(body, (dict, list)) else body
-    headers = {"Content-Type": "application/x-ndjson" if isinstance(body, bytes) else "application/json"}
-    if auth:
-        headers["Authorization"] = AUTH
+    headers = {"Content-Type": "application/x-ndjson" if isinstance(body, bytes) else "application/json",
+               "Authorization": auth}
     req = urllib.request.Request(url, data=data, method=method, headers=headers)
     with urllib.request.urlopen(req, context=CTX, timeout=30) as resp:
         return json.loads(resp.read() or b"null")
@@ -97,7 +104,7 @@ def main() -> None:
     wait_for("5 WIN-001 alerts from Kibana (rules run every 5 minutes)", alerts)
 
     def case() -> dict | None:
-        cases = call(f"{BFF}/api/cases?size=100", auth=False)["cases"]
+        cases = call(f"{BFF}/api/cases?size=100", auth=ANALYST_AUTH)["cases"]
         return next((c for c in cases if HOST in c.get("affected_hosts", [])), None)
 
     c = wait_for("the case in the bff API", case, every=10)
@@ -120,10 +127,17 @@ def main() -> None:
     checks["no plaintext host/user/command line reached the LLM"] = (
         HOST not in sent and USER not in sent and "-enc" not in sent)
 
+    # The body claims another analyst; bff must record the one the token belongs to (ADR-028)
     reviewed = call(f"{BFF}/api/cases/{c['id']}/review",
-                    {"status": "approved", "analyst": "e2e", "notes": "pipeline test"}, "POST",
-                    auth=False)
+                    {"status": "approved", "analyst": "someone-else", "notes": "pipeline test"},
+                    "POST", auth=ANALYST_AUTH)
     checks["analyst review recorded"] = reviewed["review_status"] == "approved"
+    checks["review recorded under the token's analyst"] = reviewed.get("reviewed_by") == ANALYST
+    try:
+        call(f"{BFF}/api/cases?size=1", auth="Bearer not-a-valid-analyst-token-000000")
+        checks["bff rejects an unknown token"] = False
+    except urllib.error.HTTPError as err:
+        checks["bff rejects an unknown token"] = err.code == 401
 
     for name, ok in checks.items():
         print(f"  {'PASS' if ok else 'FAIL'}  {name}")

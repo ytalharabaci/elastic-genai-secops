@@ -17,10 +17,12 @@ function New-Secret([int]$Length) {
 # Case-sensitive operators: case-insensitive matching breaks on "I" under the Turkish culture.
 $existing = @()
 if (Test-Path $file) { $existing = Get-Content $file | Where-Object { $_ -cmatch '^[A-Z_]+=' } | ForEach-Object { $_.Split('=')[0] } }
+$oldMcp = if (Test-Path $file) { Get-Content $file | Where-Object { $_ -cmatch '^MCP_TOKEN=' } | ForEach-Object { $_.Substring(10) } | Select-Object -First 1 }
 $wanted = [ordered]@{
     LOGSTASH_INGEST_PASSWORD = (New-Secret 24)
     ESM_PLATFORM_PASSWORD    = (New-Secret 24)
-    MCP_TOKEN                = (New-Secret 48)
+    # One analyst to start with; add name:token pairs per person (ADR-028). An older MCP_TOKEN is kept.
+    ANALYST_TOKENS           = 'analyst:' + $(if ($oldMcp) { $oldMcp } else { New-Secret 48 })
     LLM_API_KEY              = ''
 }
 $add = foreach ($k in $wanted.Keys) { if ($existing -cnotcontains $k) { "$k=$($wanted[$k])" } }

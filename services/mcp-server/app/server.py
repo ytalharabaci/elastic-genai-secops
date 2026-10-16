@@ -12,6 +12,7 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
+from app.auth import audit
 from app.clients import CaseAPI, Elasticsearch, Masking
 from app.hunts import Hunt, build_query, load_hunts, summarize
 from app.views import mask_case
@@ -43,6 +44,7 @@ def build_server(cases: CaseAPI, masking: Masking, es: Elasticsearch,
     @mcp.tool()
     async def list_cases(review_status: str = "pending", limit: int = 20) -> str:
         """List cases, newest first. review_status: pending | approved | rejected | all."""
+        audit("list_cases", review_status=review_status, limit=limit)
         status = "" if review_status == "all" else review_status
         if status not in ("", "pending", "approved", "rejected"):
             return "review_status must be pending, approved, rejected or all"
@@ -52,6 +54,7 @@ def build_server(cases: CaseAPI, masking: Masking, es: Elasticsearch,
     @mcp.tool()
     async def get_case(case_id: str) -> str:
         """Full masked case: LLM triage suggestion, rationale, timeline and affected entities."""
+        audit("get_case", case_id=case_id)
         case = await cases.get(case_id)
         if case is None:
             return f"case {case_id} not found"
@@ -60,6 +63,7 @@ def build_server(cases: CaseAPI, masking: Masking, es: Elasticsearch,
     @mcp.tool()
     async def alert_statistics(hours: int = 24) -> str:
         """Kibana Security alert counts in the last N hours by rule and severity (no entities)."""
+        audit("alert_statistics", hours=hours)
         hours = max(1, min(hours, MAX_HOURS))
         result = await es.search(".alerts-security.alerts-*", {
             "size": 0,
@@ -82,12 +86,14 @@ def build_server(cases: CaseAPI, masking: Masking, es: Elasticsearch,
     @mcp.tool()
     async def list_hunts() -> str:
         """Hunting queries that run_hunt can execute."""
+        audit("list_hunts")
         return _dump([{"id": h.id, "title": h.title, "description": h.description,
                        "mitre": list(h.mitre)} for h in hunts.values()])
 
     @mcp.tool()
     async def run_hunt(hunt_id: str, hours: int = 24, top: int = 10) -> str:
         """Run an allow-listed hunt; returns hit count and top values of non-identifying fields."""
+        audit("run_hunt", hunt_id=hunt_id, hours=hours, top=top)
         hunt = hunts.get(hunt_id)
         if hunt is None:
             return f"unknown hunt {hunt_id!r}; call list_hunts for the available ids"
