@@ -32,10 +32,7 @@ class CaseAPI:
     """
 
     def __init__(self, base_url: str, client: httpx.AsyncClient | None = None) -> None:
-        # bff over HTTPS (compose) uses the same platform CA as Elasticsearch
-        self._client = client or httpx.AsyncClient(
-            base_url=base_url.rstrip("/"), timeout=15,
-            verify=ca_context(os.getenv("ELASTIC_CA_CERTS")))
+        self._client = client or httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=15)
 
     def _auth(self) -> dict[str, str]:
         token = current_token.get() or os.getenv("ANALYST_TOKEN", "")

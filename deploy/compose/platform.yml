@@ -5,8 +5,7 @@
 #   docker compose -f siem.yml -f platform.yml up -d --build
 #
 # Flow: Kibana alerts -> detection-service -> alert-gateway -> enrichment-service (+ masking-service)
-#       -> llm-orchestrator -> case-service -> bff (https://localhost:8080/api/cases)
-# bff and the MCP server use HTTPS with certificates from the "certs" volume (see siem.yml).
+#       -> llm-orchestrator -> case-service -> bff (http://localhost:8080/api/cases)
 # LLM: LLM_PROVIDER=mock by default. See services/llm-orchestrator for ollama, openai-compatible,
 #      anthropic and vertex settings.
 
@@ -73,7 +72,7 @@ services:
       NOTIFY_DETAIL: ${NOTIFY_DETAIL:-summary}
       TICKET_ON: ${TICKET_ON:-approved}
       TICKET_DETAIL: ${TICKET_DETAIL:-full}
-      CASE_URL: ${CASE_URL:-https://localhost:8080/api/cases}
+      CASE_URL: ${CASE_URL:-http://localhost:8080/api/cases}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       TEAMS_WEBHOOK_URL: ${TEAMS_WEBHOOK_URL:-}
       WEBHOOK_URL: ${WEBHOOK_URL:-}
@@ -143,9 +142,7 @@ services:
       MCP_TRANSPORT: http
       ANALYST_TOKENS: ${ANALYST_TOKENS:?set ANALYST_TOKENS in .env (run init-env)}
       MCP_ALLOWED_HOSTS: localhost:*,127.0.0.1:*,mcp-server:*
-      CASE_API_URL: https://bff:8080/api
-      MCP_TLS_CERT_FILE: /certs/mcp-server/mcp-server.crt
-      MCP_TLS_KEY_FILE: /certs/mcp-server/mcp-server.key
+      CASE_API_URL: http://bff:8080/api
       MASKING_SERVICE_URL: http://masking-service:8001
     ports:
       - "127.0.0.1:8090:8090"
@@ -157,10 +154,6 @@ services:
       CASE_SERVICE_URL: http://case-service:8002
       LISTEN_ADDR: ":8080"
       ANALYST_TOKENS: ${ANALYST_TOKENS:?set ANALYST_TOKENS in .env (run init-env)}
-      TLS_CERT_FILE: /certs/bff/bff.crt
-      TLS_KEY_FILE: /certs/bff/bff.key
-    volumes:
-      - certs:/certs:ro
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
