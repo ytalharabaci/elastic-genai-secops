@@ -44,7 +44,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 
 ## Known limitations
 
-- **Transport security:** Beats → Logstash TLS is available on Compose (`BEATS_TLS`, ADR-030) but not yet on bare metal and Kubernetes; in Kubernetes Kibana, bff and MCP expect TLS at an ingress (no example yet). Compose serves them over HTTPS (ADR-029).
+- **Transport security:** Beats → Logstash TLS is available on Compose (`BEATS_TLS`, ADR-030) but not yet on bare metal and Kubernetes; in Kubernetes Kibana, bff and MCP get TLS at the ingress (`components/ingress`). Compose serves them over HTTPS (ADR-029).
 - **Kubernetes:** no Ingress or HPA; `detection-service` must stay at one replica.
 - **Snapshots:** off by default outside `gke`; enable them per target (docs/components/elasticsearch.md).
 - **Logstash API** runs without TLS inside Kubernetes (ECK 3.5 + Logstash 8.13 TLS API issue).
@@ -76,7 +76,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 
 ### Deployment and operations
 
-- [ ] TLS and authentication in front of Kibana, bff and MCP (Ingress / reverse proxy examples)
+- [x] TLS and authentication in front of Kibana, bff and MCP (Compose HTTPS, Kubernetes `components/ingress`, analyst tokens)
 - [x] Kubernetes NetworkPolicies: deny-by-default ingress, no outbound access for internal services
 - [ ] HPA for stateless services, Helm chart
 - [x] `wait_for_snapshot` in ILM when `SNAPSHOT_POLICY` is set (on in the `gke` overlay)
