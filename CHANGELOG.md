@@ -10,6 +10,9 @@ SOC prototype and an AI-SOC platform).
 
 ### Fixed
 
+- Kubernetes: Logstash could stay unready forever. On about one start in four its API closes every
+  connection without answering; a liveness probe now restarts it. `pipeline.workers` is capped at
+  2, since the default (one per node CPU) gave 400+ threads and a container at its memory limit.
 - `prepare-share.ps1` always failed with "SHA-512 mismatch" in Windows PowerShell 5.1, which returns
   the `.sha512` file (`binary/octet-stream`) as bytes.
 - Python services could not reach Elasticsearch after the move to Python 3.14: its default
