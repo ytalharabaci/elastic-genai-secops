@@ -22,7 +22,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import yaml
@@ -53,13 +52,11 @@ def run(spec_file: Path) -> list[str]:
               + "\noutput { stdout { codec => json_lines } }\n")
     events = "".join(json.dumps({**case["event"], "test_case": i}) + "\n"
                      for i, case in enumerate(spec["cases"]))
-    with tempfile.TemporaryDirectory() as tmp:
-        (Path(tmp) / "test.conf").write_text(config, encoding="utf-8")
-        proc = subprocess.run(
-            ["docker", "run", "--rm", "-i", "-v", f"{tmp}:/cfg:ro", IMAGE,
-             "-f", "/cfg/test.conf", "-w", "1", "--log.level", "error"],
-            input=events, capture_output=True, text=True, timeout=600,
-            env={**os.environ, "MSYS_NO_PATHCONV": "1"})
+    # The config goes on the command line: a mounted temp dir (mode 0700) is not readable by the
+    # logstash user in the container on Linux
+    proc = subprocess.run(
+        ["docker", "run", "--rm", "-i", IMAGE, "-e", config, "-w", "1", "--log.level", "error"],
+        input=events, capture_output=True, text=True, timeout=600)
     outputs = {}
     for line in proc.stdout.splitlines():
         if line.startswith("{"):
