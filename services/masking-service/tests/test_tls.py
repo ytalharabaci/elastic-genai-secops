@@ -46,6 +46,7 @@ def tls_server(tmp_path):  # type: ignore[no-untyped-def]
         + srv_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
                                 serialization.NoEncryption()))
     server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    server_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     server_ctx.load_cert_chain(tmp_path / "srv.pem")
     listener = socket.create_server(("127.0.0.1", 0))
 
@@ -81,7 +82,9 @@ def test_ca_without_key_usage_is_accepted(tls_server) -> None:  # type: ignore[n
 def test_default_context_rejects_it(tls_server) -> None:  # type: ignore[no-untyped-def]
     ca_file, port = tls_server
     with pytest.raises(ssl.SSLCertVerificationError):
-        _connect(ssl.create_default_context(cafile=ca_file), port, "localhost")
+        strict = ssl.create_default_context(cafile=ca_file)
+        strict.minimum_version = ssl.TLSVersion.TLSv1_2
+        _connect(strict, port, "localhost")
 
 
 def test_host_name_is_still_verified(tls_server) -> None:  # type: ignore[no-untyped-def]

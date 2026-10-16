@@ -16,6 +16,7 @@ def ca_context(ca_file: str | None) -> ssl.SSLContext:
     the flag is cleared for that CA; chain, expiry and host name are still checked.
     """
     ctx = ssl.create_default_context(cafile=ca_file or None)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     if ca_file:
         ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
     return ctx
