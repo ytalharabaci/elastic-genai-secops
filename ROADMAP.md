@@ -47,7 +47,8 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 - **Transport security:** Kibana, the bff API and Beats → Logstash run without TLS by default.
 - **Kubernetes:** no NetworkPolicies, Ingress or HPA; `alert-gateway` and `detection-service` must stay at one replica.
 - **Correlation state:** open correlation windows live in `alert-gateway` memory and are lost on restart.
-- **ILM** deletes the hot tier without `wait_for_snapshot`.
+- **Snapshots:** only the `gke` overlay registers a repository and SLM policy; elsewhere ILM deletes
+  without a snapshot unless you register one and set `SNAPSHOT_POLICY`.
 - **Logstash API** runs without TLS inside Kubernetes (ECK 3.5 + Logstash 8.13 TLS API issue).
 - **Manual steps:** Winlogbeat and Filebeat `panw` ingest pipelines are loaded by hand once per Beats version.
 - **Parsing:** Kaspersky events are stored but not parsed; no web server log source (WEB-* rules ship disabled).
@@ -80,7 +81,8 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 
 - [ ] TLS and authentication in front of Kibana, bff and MCP (Ingress / reverse proxy examples)
 - [ ] Kubernetes NetworkPolicies, HPA for stateless services, Helm chart
-- [ ] Snapshot repository examples for on-prem (S3/MinIO, shared FS) and `wait_for_snapshot` in ILM
+- [x] `wait_for_snapshot` in ILM when `SNAPSHOT_POLICY` is set (on in the `gke` overlay)
+- [ ] Snapshot repository examples for on-prem (S3/MinIO, shared FS)
 - [ ] Bare-metal installer run in CI on an Ubuntu 22.04 VM; platform services as systemd units
 - [ ] Elastic Stack 8.x upgrade path (8.13 → 8.19) and 9.x evaluation
 - [ ] Documentation site (mkdocs) built from `docs/`

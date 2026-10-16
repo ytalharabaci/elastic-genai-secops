@@ -32,6 +32,7 @@ configMapGenerator:
     behavior: merge
     literals:
       - RETENTION_DAYS=14
+      - SNAPSHOT_POLICY=esm-daily   # ILM deletes an index only after esm-daily has snapshotted it
   - name: esm-gcs-snapshot-config
     namespace: esm
     literals:

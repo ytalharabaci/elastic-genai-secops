@@ -29,6 +29,8 @@ spec:
             - { name: KIBANA_URL, value: "http://esm-kb-http:5601" }
             - name: RETENTION_DAYS
               valueFrom: { configMapKeyRef: { name: esm-siem-config, key: RETENTION_DAYS } }
+            - name: SNAPSHOT_POLICY   # set by overlays that register an SLM policy (gke)
+              valueFrom: { configMapKeyRef: { name: esm-siem-config, key: SNAPSHOT_POLICY, optional: true } }
             - name: LOGSTASH_INGEST_PASSWORD
               valueFrom: { secretKeyRef: { name: esm-secrets, key: LOGSTASH_INGEST_PASSWORD } }
             - name: ESM_PLATFORM_PASSWORD

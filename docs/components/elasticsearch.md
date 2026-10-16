@@ -19,7 +19,7 @@ container is needed (GKE Autopilot). Bare metal and Docker Desktop set `vm.max_m
 
 | Object | Name | Purpose |
 | --- | --- | --- |
-| ILM policy | `esm-logs` | Rollover at 50 GB per primary shard or 1 day (≤ 30 days retention) / 7 days; delete after `RETENTION_DAYS` |
+| ILM policy | `esm-logs` | Rollover at 50 GB per primary shard or 1 day (≤ 30 days retention) / 7 days; delete after `RETENTION_DAYS`, after a snapshot when `SNAPSHOT_POLICY` is set |
 | Component templates | `logs@custom`, `metrics@custom` | Attach `esm-logs` to the built-in `logs` and `metrics` index templates |
 | Roles | `logstash_writer`, `esm_platform` | See [architecture overview](../architecture/overview.md#users-and-roles) |
 | Users | `logstash_ingest`, `esm_platform` | Passwords from `.env`, `secrets.env` or `/root/esm-credentials` |
@@ -45,3 +45,17 @@ The `gke` overlay registers the GCS repository `esm-gcs` and the daily SLM polic
 [snapshot repository](https://www.elastic.co/guide/en/elasticsearch/reference/8.13/snapshot-restore.html)
 (shared file system, S3, MinIO) and an SLM policy the same way; the hot retention stays
 `RETENTION_DAYS`.
+
+Set `SNAPSHOT_POLICY` to the SLM policy (`esm-daily` in the `gke` overlay) and the bootstrap adds
+`wait_for_snapshot` to the delete phase: an index past `RETENTION_DAYS` is deleted only after that
+policy has completed a snapshot. Elasticsearch refuses an ILM policy that names a missing SLM policy,
+so the bootstrap waits up to 10 minutes for it to exist. Without `SNAPSHOT_POLICY` indices are
+deleted on schedule and the bootstrap logs a warning.
+
+If snapshots keep failing, indices wait in the delete phase and the disk fills up instead of data
+being lost. Check:
+
+```bash
+curl -s $CA -u "$AUTH" "$ES/_slm/policy/esm-daily?filter_path=*.last_success,*.last_failure&pretty"
+curl -s $CA -u "$AUTH" "$ES/logs-*/_ilm/explain?filter_path=indices.*.step,indices.*.step_info&pretty"   | grep -B1 -A2 wait-for-snapshot
+```

@@ -10,6 +10,8 @@
 #   ES_USER / ES_PASSWORD     superuser credentials                (default user: elastic)
 #   ES_CA_CERT                CA certificate for ES and Kibana     (optional; empty = system trust)
 #   RETENTION_DAYS            delete logs/metrics after N days     (default 90)
+#   SNAPSHOT_POLICY           SLM policy that must snapshot an index before ILM deletes it
+#                             (optional; waits for the policy to exist, e.g. esm-daily on GKE)
 #   LOGSTASH_INGEST_PASSWORD  create/update user logstash_ingest   (optional)
 #   ESM_PLATFORM_PASSWORD     create/update user esm_platform      (optional; platform services)
 #   KIBANA_URL                import detection rules into Kibana   (optional, e.g. http://localhost:5601)
@@ -26,6 +28,10 @@ if ! [[ "${RETENTION_DAYS}" =~ ^[0-9]+$ ]] || (( RETENTION_DAYS < 1 )); then
 fi
 # Short retention: roll over daily; long retention: weekly (keeps the shard count low on small clusters)
 if (( RETENTION_DAYS <= 30 )); then ROLLOVER_MAX_AGE="1d"; else ROLLOVER_MAX_AGE="7d"; fi
+SNAPSHOT_POLICY="${SNAPSHOT_POLICY:-}"
+if [[ -n "${SNAPSHOT_POLICY}" && ! "${SNAPSHOT_POLICY}" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+  echo "SNAPSHOT_POLICY must be an SLM policy id (lowercase letters, digits, . _ -)" >&2; exit 1
+fi
 
 CURL=(curl -sS -u "${ES_USER}:${ES_PASSWORD}")
 [[ -n "${ES_CA_CERT:-}" ]] && CURL+=(--cacert "${ES_CA_CERT}")
@@ -63,6 +69,16 @@ wait_for Elasticsearch "${ES_URL}/_cluster/health?wait_for_status=yellow&timeout
 log "ILM policy esm-logs (delete after ${RETENTION_DAYS}d, rollover ${ROLLOVER_MAX_AGE})"
 policy="$(sed -e "s/__RETENTION_DAYS__/${RETENTION_DAYS}/" -e "s/__ROLLOVER_MAX_AGE__/${ROLLOVER_MAX_AGE}/" \
   "${CONTENT_DIR}/elasticsearch/ilm/esm-logs.json")"
+if [[ -n "${SNAPSHOT_POLICY}" ]]; then
+  # Elasticsearch rejects a wait_for_snapshot that names a missing SLM policy; on GKE another Job
+  # creates it, so wait for it here.
+  log "delete phase waits for a snapshot by SLM policy ${SNAPSHOT_POLICY}"
+  wait_for "SLM policy ${SNAPSHOT_POLICY}" "${ES_URL}/_slm/policy/${SNAPSHOT_POLICY}" 600
+  policy="$(sed "s/\"delete\": {}/\"wait_for_snapshot\": {\"policy\": \"${SNAPSHOT_POLICY}\"}, \"delete\": {}/" \
+    <<<"${policy}")"
+else
+  log "WARNING: SNAPSHOT_POLICY is not set; indices are deleted after ${RETENTION_DAYS}d without a snapshot"
+fi
 es_put "/_ilm/policy/esm-logs" "${policy}"
 
 for f in "${CONTENT_DIR}"/elasticsearch/component-templates/*.json; do

@@ -28,6 +28,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Snapshot before delete**: with `SNAPSHOT_POLICY` set, `content/bootstrap.sh` adds
+  `wait_for_snapshot` to the delete phase of `esm-logs`, so an index leaves the hot tier only after
+  that SLM policy has snapshotted it. The `gke` overlay sets `esm-daily`; compose and bare metal
+  pass the setting through. Without it, the bootstrap warns that indices are deleted unsnapshotted.
 - **SIEM profile** on three targets: Docker Compose (`deploy/compose/siem.yml`), bare-metal Ubuntu
   22.04 installer, Kubernetes with ECK 3.5 and kustomize (`lab`, `onprem`, `gke` overlays).
 - **Log sources** (`integrations/sources`): Windows (Winlogbeat, WEF, Sysmon), FortiGate, Palo Alto
