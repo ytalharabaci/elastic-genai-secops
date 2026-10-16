@@ -107,7 +107,7 @@ jobs:
           done
           exit $rc
       - name: shellcheck
-        run: shellcheck -S warning content/bootstrap.sh deploy/baremetal/ubuntu/elk_setup_ubuntu_jammy.sh deploy/compose/init-env.sh deploy/kubernetes/init-secrets.sh
+        run: shellcheck -S warning content/bootstrap.sh content/elasticsearch/beats-pipelines.sh deploy/baremetal/ubuntu/elk_setup_ubuntu_jammy.sh deploy/compose/init-env.sh deploy/kubernetes/init-secrets.sh
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12
 

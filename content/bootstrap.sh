@@ -13,6 +13,9 @@
 #   LOGSTASH_INGEST_PASSWORD  create/update user logstash_ingest   (optional)
 #   ESM_PLATFORM_PASSWORD     create/update user esm_platform      (optional; platform services)
 #   KIBANA_URL                import detection rules into Kibana   (optional, e.g. http://localhost:5601)
+#   BEATS_VERSIONS            load the Winlogbeat and Filebeat panw ingest pipelines for these Beats
+#                             versions (default: the Elasticsearch version; "none" to skip)
+#   BEATS_ARTIFACTS_URL       mirror of https://artifacts.elastic.co/downloads/beats (air-gapped)
 set -Eeuo pipefail
 
 CONTENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -70,6 +73,27 @@ for f in "${CONTENT_DIR}"/elasticsearch/component-templates/*.json; do
   log "component template ${name}"
   es_put "/_component_template/${name}" "$(cat "${f}")"
 done
+
+# Winlogbeat and Filebeat send events through Logstash to the ingest pipeline of their own version;
+# endpoints run the stack version (deploy/endpoints/windows/prepare-share.ps1)
+# shellcheck source=elasticsearch/beats-pipelines.sh
+source "${CONTENT_DIR}/elasticsearch/beats-pipelines.sh"
+if [[ -z "${BEATS_VERSIONS:-}" ]]; then
+  BEATS_VERSIONS="$(request GET "${ES_URL}/" | sed -n 's/.*"number" *: *"\([^"]*\)".*/\1/p')"
+fi
+if [[ "${BEATS_VERSIONS}" != none ]]; then
+  for v in ${BEATS_VERSIONS}; do
+    [[ "${v}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "BEATS_VERSIONS: invalid version ${v}" >&2; exit 1; }
+    if "${CURL[@]}" -f -o /dev/null "${ES_URL}/_ingest/pipeline/winlogbeat-${v}-routing" 2>/dev/null &&
+       "${CURL[@]}" -f -o /dev/null "${ES_URL}/_ingest/pipeline/filebeat-${v}-panw-panos-pipeline" 2>/dev/null; then
+      log "Beats ${v} ingest pipelines already loaded"
+    elif ! load_beats_pipelines "${v}"; then
+      log "WARNING: could not download the Beats ${v} packages from ${BEATS_ARTIFACTS_URL}; Windows and"
+      log "  Palo Alto (Filebeat) events stay unparsed until the pipelines are loaded (BEATS_ARTIFACTS_URL"
+      log "  for a mirror, or BEATS_VERSIONS=none and integrations/sources/README.md to do it by hand)"
+    fi
+  done
+fi
 
 for f in "${CONTENT_DIR}"/elasticsearch/roles/*.json; do
   name="$(basename "${f}" .json)"

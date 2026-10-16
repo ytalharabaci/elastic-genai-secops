@@ -28,6 +28,10 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Beats ingest pipelines in the bootstrap**: `content/bootstrap.sh` loads the Winlogbeat and
+  Filebeat `panw` ingest pipelines for the stack version (`BEATS_VERSIONS`), downloaded from
+  artifacts.elastic.co (or `BEATS_ARTIFACTS_URL`) and SHA-512 checked, replacing the manual
+  `winlogbeat setup --pipelines` / `filebeat setup --pipelines` step.
 - **SIEM profile** on three targets: Docker Compose (`deploy/compose/siem.yml`), bare-metal Ubuntu
   22.04 installer, Kubernetes with ECK 3.5 and kustomize (`lab`, `onprem`, `gke` overlays).
 - **Log sources** (`integrations/sources`): Windows (Winlogbeat, WEF, Sysmon), FortiGate, Palo Alto

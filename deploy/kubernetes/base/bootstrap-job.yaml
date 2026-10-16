@@ -1,5 +1,6 @@
-# Runs content/bootstrap.sh: ILM, component templates, roles, the logstash_ingest and esm_platform
-# users, and the detection rules (after Kibana is up). Idempotent. Jobs are immutable, so delete
+# Runs content/bootstrap.sh: ILM, component templates, the Winlogbeat and Filebeat panw ingest
+# pipelines (downloaded from artifacts.elastic.co, or BEATS_ARTIFACTS_URL), roles, the
+# logstash_ingest and esm_platform users, and the detection rules (after Kibana is up). Idempotent. Jobs are immutable, so delete
 # it before re-applying changed content:  kubectl -n esm delete job esm-bootstrap --ignore-not-found
 apiVersion: batch/v1
 kind: Job
@@ -46,13 +47,15 @@ spec:
             - { name: tmp, mountPath: /tmp }
       volumes:
         - name: tmp
-          emptyDir: { sizeLimit: 16Mi }
+          # The Winlogbeat and Filebeat packages (~75 MB) are unpacked here for their ingest pipelines
+          emptyDir: { sizeLimit: 128Mi }
         - name: content
           configMap:
             name: esm-content
             # Rebuild the content/ layout that bootstrap.sh expects
             items:
               - { key: bootstrap.sh, path: bootstrap.sh }
+              - { key: beats-pipelines.sh, path: elasticsearch/beats-pipelines.sh }
               - { key: ilm-esm-logs.json, path: elasticsearch/ilm/esm-logs.json }
               - { key: ct-logs-custom.json, path: elasticsearch/component-templates/logs@custom.json }
               - { key: ct-metrics-custom.json, path: elasticsearch/component-templates/metrics@custom.json }

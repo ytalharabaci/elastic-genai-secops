@@ -44,7 +44,7 @@ journalctl -u logstash -n 100 --no-pager
 | `Address already in use` | Each source needs its own port; see [integrations/sources](../../integrations/sources/README.md). Ports below 1024 need root; all defaults are above. |
 | Events missing in Discover | Create a data view for `logs-*`; check the time range; send a test line: `logger -n <host> -P 5514 -d "test"`. |
 | FortiGate / Palo Alto events are hours in the future or past | Set `FORTIGATE_TZ` / `PANOS_TZ` to the device clock's time zone. |
-| Windows events have no `process.name`, `event.category` | The Winlogbeat ingest pipelines are not loaded. Run `winlogbeat setup --pipelines` once (see [integrations/sources](../../integrations/sources/README.md#windows-load-the-winlogbeat-ingest-pipelines)). |
+| Windows events have no `process.name`, `event.category` | No ingest pipeline for that Winlogbeat version. Look for the bootstrap's `WARNING: could not download the Beats` line; set `BEATS_VERSIONS` to the endpoints' version or `BEATS_ARTIFACTS_URL` to a mirror and rerun it (see [integrations/sources](../../integrations/sources/README.md#windows-and-palo-alto-filebeat-ingest-pipelines)). |
 | Pipeline syntax errors | `bin/logstash --config.test_and_exit -f <file>` (see [logstash.md](../components/logstash.md#adding-a-source)). |
 
 ## Detection rules
