@@ -28,6 +28,7 @@ journalctl -u logstash -n 100 --no-pager
 | Killed / `OutOfMemoryError` | Raise `ES_HEAP` (Compose) or the ECK resources; keep the heap at half the container memory. |
 | Health `yellow` on a single node | Expected: replicas cannot be assigned on one node. |
 | `401` for `elastic` after changing `.env` | The `elastic` password was set when the volume was created. Use the original value, or reset it with `bin/elasticsearch-reset-password -u elastic`. |
+| Disk filling up, old `logs-*` indices not deleted | They wait for a snapshot (`SNAPSHOT_POLICY`). Check the SLM policy's `last_failure` and the repository (see [snapshots](../components/elasticsearch.md#snapshots)); deletion resumes after the next successful snapshot. |
 
 ## Compose `.env`
 
@@ -44,7 +45,7 @@ journalctl -u logstash -n 100 --no-pager
 | `Address already in use` | Each source needs its own port; see [integrations/sources](../../integrations/sources/README.md). Ports below 1024 need root; all defaults are above. |
 | Events missing in Discover | Create a data view for `logs-*`; check the time range; send a test line: `logger -n <host> -P 5514 -d "test"`. |
 | FortiGate / Palo Alto events are hours in the future or past | Set `FORTIGATE_TZ` / `PANOS_TZ` to the device clock's time zone. |
-| Windows events have no `process.name`, `event.category` | The Winlogbeat ingest pipelines are not loaded. Run `winlogbeat setup --pipelines` once (see [integrations/sources](../../integrations/sources/README.md#windows-load-the-winlogbeat-ingest-pipelines)). |
+| Windows events have no `process.name`, `event.category` | No ingest pipeline for that Winlogbeat version. Look for the bootstrap's `WARNING: could not download the Beats` line; set `BEATS_VERSIONS` to the endpoints' version or `BEATS_ARTIFACTS_URL` to a mirror and rerun it (see [integrations/sources](../../integrations/sources/README.md#windows-and-palo-alto-filebeat-ingest-pipelines)). |
 | Pipeline syntax errors | `bin/logstash --config.test_and_exit -f <file>` (see [logstash.md](../components/logstash.md#adding-a-source)). |
 
 ## Detection rules

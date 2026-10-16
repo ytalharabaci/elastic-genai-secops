@@ -3,8 +3,8 @@
 [![CI/CD](https://github.com/yusufarbc/elastic-genai-secops/actions/workflows/pipeline.yml/badge.svg?branch=production)](https://github.com/yusufarbc/elastic-genai-secops/actions/workflows/pipeline.yml)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)
 ![Elastic Stack](https://img.shields.io/badge/Elastic%20Stack-8.13-005571?logo=elasticsearch)
-![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)
-![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python)
+![Go](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go)
+![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python)
 
 An open, AI-assisted Security Operations platform built on the **Basic-licensed Elastic Stack**.
 Logs are collected and parsed with Logstash and Beats, Elastic detection rules raise alerts, alerts are

@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from app.clients import CaseAPI, Elasticsearch, Masking
 from app.hunts import Hunt, build_query, load_hunts, summarize
@@ -37,8 +37,8 @@ def _dump(value: Any) -> str:
 
 
 def build_server(cases: CaseAPI, masking: Masking, es: Elasticsearch,
-                 hunts: dict[str, Hunt]) -> FastMCP:
-    mcp = FastMCP("Elastic GenAI SecOps", instructions=INSTRUCTIONS)
+                 hunts: dict[str, Hunt]) -> MCPServer:
+    mcp = MCPServer("Elastic GenAI SecOps", instructions=INSTRUCTIONS)
 
     @mcp.tool()
     async def list_cases(review_status: str = "pending", limit: int = 20) -> str:
@@ -98,7 +98,7 @@ def build_server(cases: CaseAPI, masking: Masking, es: Elasticsearch,
     return mcp
 
 
-def server_from_env() -> FastMCP:
+def server_from_env() -> MCPServer:
     mcp = build_server(
         cases=CaseAPI(os.getenv("CASE_API_URL", "http://bff:8080/api")),
         masking=Masking(os.getenv("MASKING_SERVICE_URL", "http://masking-service:8001")),
