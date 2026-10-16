@@ -20,7 +20,7 @@
 #   SNAPSHOT_EXPIRE_AFTER     delete snapshots older than this     (default 730d; regulatory retention)
 #   LOGSTASH_INGEST_PASSWORD  create/update user logstash_ingest   (optional)
 #   ESM_PLATFORM_PASSWORD     create/update user esm_platform      (optional; platform services)
-#   KIBANA_URL                import detection rules into Kibana   (optional, e.g. http://localhost:5601)
+#   KIBANA_URL                import detection rules into Kibana   (optional, e.g. https://localhost:5601)
 #   BEATS_VERSIONS            load the Winlogbeat and Filebeat panw ingest pipelines for these Beats
 #                             versions (default: the Elasticsearch version; "none" to skip)
 #   BEATS_ARTIFACTS_URL       mirror of https://artifacts.elastic.co/downloads/beats (air-gapped)

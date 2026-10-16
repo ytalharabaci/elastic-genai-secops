@@ -18,7 +18,8 @@ import httpx2
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-URL = os.getenv("MCP_URL", "http://localhost:8090/mcp")
+URL = os.getenv("MCP_URL", "https://localhost:8090/mcp")
+CA = os.getenv("MCP_CA_CERT")  # the stack's CA (deploy/compose certs volume); default: system store
 TOKEN = os.environ["ANALYST_TOKEN"]  # one analyst's token from ANALYST_TOKENS
 PLAINTEXT = re.compile(r"E2E-PC-|e2e-user-|PC-LAB-01")  # identifiers written by the e2e tests
 
@@ -30,7 +31,7 @@ def text(result) -> str:  # type: ignore[no-untyped-def]
 async def main() -> None:
     checks: dict[str, bool] = {}
     http = httpx2.AsyncClient(headers={"Authorization": f"Bearer {TOKEN}"},
-                              timeout=httpx2.Timeout(30, read=300))
+                              timeout=httpx2.Timeout(30, read=300), verify=CA or True)
     async with http, streamable_http_client(URL, http_client=http) as (r, w):
         async with ClientSession(r, w) as session:
             await session.initialize()
