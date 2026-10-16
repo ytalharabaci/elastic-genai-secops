@@ -45,8 +45,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 ## Known limitations
 
 - **Transport security:** Kibana, the bff API and Beats → Logstash run without TLS by default.
-- **Kubernetes:** no NetworkPolicies, Ingress or HPA; `alert-gateway` and `detection-service` must stay at one replica.
-- **Correlation state:** open correlation windows live in `alert-gateway` memory and are lost on restart.
+- **Kubernetes:** no NetworkPolicies, Ingress or HPA; `detection-service` must stay at one replica.
 - **ILM** deletes the hot tier without `wait_for_snapshot`.
 - **Logstash API** runs without TLS inside Kubernetes (ECK 3.5 + Logstash 8.13 TLS API issue).
 - **Manual steps:** Winlogbeat and Filebeat `panw` ingest pipelines are loaded by hand once per Beats version.
@@ -66,7 +65,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 
 ### Triage platform
 
-- [ ] Persistent correlation windows (NATS KV or Elasticsearch) and multiple alert-gateway replicas
+- [x] Persistent correlation windows in NATS KV and multiple alert-gateway replicas (ADR-027)
 - [ ] Asset criticality and GeoIP enrichers; OpenCTI threat-intel source
 - [ ] Organisation RAG: playbooks and past dispositions with `dense_vector`
 - [ ] Triage UI on top of the bff API

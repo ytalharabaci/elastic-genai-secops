@@ -20,7 +20,7 @@ flowchart LR
 | Service | Language | Does | Stores |
 | --- | --- | --- | --- |
 | detection-service | Go | Polls open alerts, normalizes them, extracts MITRE techniques | checkpoint in `esm-state` |
-| alert-gateway | Go | Groups alerts by host + user + first technique within `CORRELATION_WINDOW`; emits early at `CORRELATION_THRESHOLD` alerts; risk score | in memory |
+| alert-gateway | Go | Groups alerts by host + user + first technique within `CORRELATION_WINDOW`; emits early at `CORRELATION_THRESHOLD` alerts; risk score | NATS KV `esm-correlation` |
 | enrichment-service | Python | Builds the curated incident: masked identifiers, timeline (max 50), deterministic summary. Free-text fields such as command lines are never forwarded | – |
 | masking-service | Python | Deterministic pseudonyms (`host_1a2b3c`) and the only reverse map; maps expire after `MASKING_MAP_TTL_HOURS` (default 14 days, ADR-025) | `esm-masking-maps` |
 | llm-orchestrator | Python | The only LLM caller: one call per incident, JSON schema validation, retries, token budget per window, audit log | `esm-llm-audit` |
@@ -73,6 +73,5 @@ response, model, token counts, latency and outcome.
 
 ## Limits (see ROADMAP.md)
 
-- alert-gateway keeps open correlation windows in memory; alerts of an unfinished window are lost on restart.
 - The GCP Pub/Sub bus adapter is not implemented yet (`BUS_BACKEND=nats` only).
 - No asset-criticality or GeoIP enrichers yet.

@@ -1,4 +1,4 @@
-# Keep 1 replica: open correlation windows live in memory.
+# Replicas share the correlation windows in the NATS bucket esm-correlation (ADR-027).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
