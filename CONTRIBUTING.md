@@ -11,8 +11,8 @@ Thanks for your interest in Elastic GenAI SecOps. Issues and pull requests are w
 
 ## Development setup
 
-Requirements: Docker (with Compose), Python 3.12, Go 1.26. Without local Go or Python, run the
-checks in containers (`golang:1.26-alpine`, `python:3.12-slim`) as CI does.
+Requirements: Docker (with Compose), Python 3.12, Go 1.27. Without local Go or Python, run the
+checks in containers (`golang:1.27-alpine`, `python:3.12-slim`) as CI does.
 
 ```bash
 # Go services and shared library (one module at the repository root)
