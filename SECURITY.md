@@ -2,14 +2,12 @@
 
 ## Reporting a vulnerability
 
-Please do **not** open a public issue for security problems. Report them privately through
-[GitHub security advisories](https://github.com/yusufarbc/elastic-genai-secops/security/advisories/new).
-Include the affected component, version or commit, steps to reproduce and the impact you expect.
-You will get an acknowledgement within a week.
+The project is archived and no longer maintained, so vulnerabilities are no longer fixed. Fork the
+repository if you need to patch it.
 
 ## Supported versions
 
-Only the `production` branch receives fixes until the first tagged release.
+None. The last version, v1.0.0, receives no further fixes.
 
 ## Security model in short
 
