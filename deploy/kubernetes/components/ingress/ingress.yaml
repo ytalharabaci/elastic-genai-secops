@@ -1,0 +1,50 @@
+# Kibana on its own host name, so it needs no base path.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kibana
+  namespace: esm
+  # annotations:
+  #   cert-manager.io/cluster-issuer: <your-issuer>
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [KIBANA_HOST]
+      secretName: esm-ingress-tls
+  rules:
+    - host: KIBANA_HOST
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: esm-kb-http, port: { number: 5601 } }
+---
+# Case API under /api and the MCP endpoint under /mcp. Both require an analyst token (ADR-028).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: platform-api
+  namespace: esm
+  annotations:
+    # MCP streams responses (server-sent events): no buffering, long reads
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    # cert-manager.io/cluster-issuer: <your-issuer>
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [API_HOST]
+      secretName: esm-ingress-tls
+  rules:
+    - host: API_HOST
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service: { name: bff, port: { number: 8080 } }
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service: { name: mcp-server, port: { number: 8090 } }

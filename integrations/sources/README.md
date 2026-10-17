@@ -10,7 +10,7 @@ configuration for the sending side. `pipelines.yml` enables all of them; remove 
 | Palo Alto (Filebeat) | `paloalto/logstash-beats.conf` | 5044/tcp (beats) | Filebeat `panw` module | `logs-paloalto-*` |
 | Windows | `windows/logstash.conf` | 5045/tcp (beats) | Winlogbeat on endpoints or on a WEC server | `logs-windows-*` |
 | Metricbeat / Heartbeat | `beats-health/logstash.conf` | 5046/tcp (beats) | Metricbeat, Heartbeat | `metrics-metricbeat-*`, `logs-heartbeat-*` |
-| Kaspersky | `kaspersky/logstash.conf` | 5047/tcp (beats) | Filebeat reading the KSC syslog export | `logs-kaspersky-*` |
+| Kaspersky | `kaspersky/logstash.conf` | 5047/tcp (beats) | Filebeat reading the KSC SIEM export (CEF or LEEF) | `logs-kaspersky-*` |
 | Syslog | `syslog/logstash.conf` | 5514/udp+tcp (RFC3164), 5515/tcp (RFC5424) | Any syslog sender | `logs-syslog-*` |
 | FortiGate | `fortigate/logstash.conf` | 5516/udp+tcp | FortiGate syslog (key=value) | `logs-fortigate-*` |
 | Palo Alto (syslog) | `paloalto/logstash-syslog.conf` | 5517/udp+tcp | PAN-OS syslog server profile | `logs-paloalto-*` |
@@ -98,9 +98,28 @@ collector): set `ssl.enabled: true` and `ssl.certificate_authorities: ["/etc/esm
   (`paloalto/collector/rsyslog-30-paloalto.conf`, UDP 5518), Filebeat reads the file and ships it to 5044.
   The bootstrap loads the module's ingest pipelines ([above](#windows-and-palo-alto-filebeat-ingest-pipelines)).
 
+## Kaspersky Security Center
+
+Turn on the SIEM export in KSC (Administration Server properties, *SIEM*) in **CEF** or **LEEF**
+format to a syslog receiver on the collector host, and let Filebeat read that file and ship it to
+5047. The pipeline maps the endpoint (`dhost`, `dst`, `duser`), file, action, time and severity
+to ECS; the machine Filebeat runs on becomes `observer.hostname`. KSC's custom string fields
+(`csN` with `csNLabel`) and other vendor keys are kept under `kaspersky.*`, e.g.
+`kaspersky.virusname`. Detections (`GNRL_EV_VIRUS_FOUND`, `..._OBJECT_NOT_CURED`,
+`GNRL_EV_ATTACK_DETECTED`, ...) get `event.kind: alert` and raise rule KAS-001; other lines are
+kept as they are with the tag `kaspersky_unparsed`.
+
 ## Test a pipeline
 
-Send a syslog line and look for it in Kibana (Discover, data view `logs-*`):
+Sample events with the fields they must produce live in `tests/pipelines/<source>.yml`; CI runs
+them through the pipeline's filter in the Logstash image (needs Docker):
+
+```bash
+python tests/pipelines/run.py            # all sources
+python tests/pipelines/run.py kaspersky  # one source
+```
+
+On a running stack, send a syslog line and look for it in Kibana (Discover, data view `logs-*`):
 
 ```bash
 logger -n <logstash-host> -P 5514 -d "esm test message"

@@ -207,6 +207,8 @@ jobs:
       - run: pip install pyyaml
       - name: Detection rules are built from rules.yml
         run: python content/detection-rules/build.py --check
+      - name: Logstash pipelines parse their sample events (tests/pipelines)
+        run: python tests/pipelines/run.py
       - name: Compose files
         run: |
           cd deploy/compose
@@ -239,11 +241,13 @@ jobs:
           EOF
           go install github.com/yannh/kubeconform/cmd/kubeconform@v0.6.7
           # Optional components are checked on top of the overlay they are meant for
-          mkdir -p deploy/kubernetes/overlays/onprem-snapshots-s3
-          printf 'resources: [../onprem]\ncomponents: [../../components/snapshots-s3]\n' \
-            > deploy/kubernetes/overlays/onprem-snapshots-s3/kustomization.yaml
-          for o in lab onprem gke onprem-snapshots-s3; do
-            [ "$o" = onprem-snapshots-s3 ] || sh deploy/kubernetes/init-secrets.sh "$o"   # uses onprem's
+          for c in snapshots-s3 ingress; do
+            mkdir -p "deploy/kubernetes/overlays/onprem-$c"
+            printf 'resources: [../onprem]\ncomponents: [../../components/%s]\n' "$c" \
+              > "deploy/kubernetes/overlays/onprem-$c/kustomization.yaml"
+          done
+          for o in lab onprem gke onprem-snapshots-s3 onprem-ingress; do
+            case "$o" in onprem-*) ;; *) sh deploy/kubernetes/init-secrets.sh "$o" ;; esac   # components use onprem's
             kubectl kustomize --load-restrictor LoadRestrictionsNone "deploy/kubernetes/overlays/$o" \
               | "$(go env GOPATH)/bin/kubeconform" -strict -summary -kubernetes-version 1.31.0 \
                   -schema-location default \

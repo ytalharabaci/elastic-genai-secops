@@ -41,6 +41,13 @@ SOC prototype and an AI-SOC platform).
 
 ### Added
 
+- **Kaspersky parsing**: the KSC SIEM export in CEF or LEEF (1.0, 2.0) is parsed into ECS, vendor
+  fields go to `kaspersky.*`, detections are `event.kind: alert`, and rule KAS-001 raises them.
+- **Pipeline tests** (`tests/pipelines/run.py`): sample events run through a pipeline's filter in
+  the Logstash image and are checked field by field; CI runs them.
+- **Kubernetes ingress** (`components/ingress`): Kibana on its own host, the case API and the MCP
+  endpoint on an API host, TLS at an ingress-nginx controller (optional cert-manager); the MCP
+  server accepts the public host and streams without proxy buffering.
 - **TLS from the Beats** (ADR-030): the Logstash beats inputs take TLS with `BEATS_TLS=true`; on
   Compose the `certs` service issues the Logstash certificate (PKCS#8 key, `LOGSTASH_TLS_SANS`), and
   `prepare-share.ps1 -CaCert` puts the CA on the deployment share and renders TLS Beats configs

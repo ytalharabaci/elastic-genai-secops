@@ -30,11 +30,11 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 
 | Area | State | Verified |
 | --- | --- | --- |
-| SIEM on Docker Compose (`siem.yml`) | Available | End to end (ingestion, ILM, 30 rules, alerts) |
+| SIEM on Docker Compose (`siem.yml`) | Available | End to end (ingestion, ILM, 31 rules, alerts) |
 | SIEM on bare-metal Ubuntu 22.04 | Available | Syntax and shellcheck only; not yet run on a real host |
 | Kubernetes (ECK 3.5, kustomize) | Available | `lab` overlay end to end on kind; `onprem`, `gke` schema-validated |
 | Log sources: Windows, FortiGate, Palo Alto, Kaspersky, syslog, Beats health | Available | Logstash config test; FortiGate, PAN-OS, syslog with sample events |
-| Detection rules (30, MITRE-mapped) | Available | Import and synthetic attacks (6 rules fired) |
+| Detection rules (31, MITRE-mapped) | Available | Import and synthetic attacks (6 rules fired) |
 | AI triage pipeline (NATS, 7 services) | Available | End to end with mock LLM and DeepSeek |
 | LLM providers | mock, openai-compatible verified; ollama, anthropic unit-tested; vertex untested | |
 | MCP server (read-only, masked) | Available | Official MCP client against the stack |
@@ -44,11 +44,11 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 
 ## Known limitations
 
-- **Transport security:** Beats → Logstash TLS is available on Compose (`BEATS_TLS`, ADR-030) but not yet on bare metal and Kubernetes; in Kubernetes Kibana, bff and MCP expect TLS at an ingress (no example yet). Compose serves them over HTTPS (ADR-029).
+- **Transport security:** Beats → Logstash TLS is available on Compose (`BEATS_TLS`, ADR-030) but not yet on bare metal and Kubernetes; in Kubernetes Kibana, bff and MCP get TLS at the ingress (`components/ingress`). Compose serves them over HTTPS (ADR-029).
 - **Kubernetes:** no Ingress or HPA; `detection-service` must stay at one replica.
 - **Snapshots:** off by default outside `gke`; enable them per target (docs/components/elasticsearch.md).
 - **Logstash API** runs without TLS inside Kubernetes (ECK 3.5 + Logstash 8.13 TLS API issue).
-- **Parsing:** Kaspersky events are stored but not parsed; no web server log source (WEB-* rules ship disabled).
+- **Parsing:** no web server log source (WEB-* rules ship disabled).
 
 ## Planned features
 
@@ -56,11 +56,13 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 
 - [ ] Fleet / Elastic Agent path (compose layer and ECK `Agent`) as an alternative to Beats
 - [ ] TLS for Beats inputs and Logstash → Elasticsearch certificate rotation
-- [ ] Kaspersky (CEF/LEEF) parsing; web server sources (nginx, Apache, IIS) to enable the WEB-* rules
+- [x] Kaspersky (CEF/LEEF) parsing and rule KAS-001
+- [ ] Web server sources (nginx, Apache, IIS) to enable the WEB-* rules
 - [ ] More sources: Microsoft 365 / Entra ID, Linux auditd, Cisco ASA, Suricata/Zeek
 - [x] Automatic loading of Winlogbeat / Filebeat `panw` ingest pipelines in the bootstrap
 - [ ] Kibana dashboards per source and an ESM overview dashboard
-- [ ] Detection rule tests with sample events in CI
+- [x] Pipeline tests with sample events in CI (`tests/pipelines`, Kaspersky first)
+- [ ] Sample events for the other pipelines and detection rule tests in CI
 
 ### Triage platform
 
@@ -76,7 +78,7 @@ Every change keeps these rules; the [ADRs](docs/architecture/adr/README.md) expl
 
 ### Deployment and operations
 
-- [ ] TLS and authentication in front of Kibana, bff and MCP (Ingress / reverse proxy examples)
+- [x] TLS and authentication in front of Kibana, bff and MCP (Compose HTTPS, Kubernetes `components/ingress`, analyst tokens)
 - [x] Kubernetes NetworkPolicies: deny-by-default ingress, no outbound access for internal services
 - [ ] HPA for stateless services, Helm chart
 - [x] `wait_for_snapshot` in ILM when `SNAPSHOT_POLICY` is set (on in the `gke` overlay)
