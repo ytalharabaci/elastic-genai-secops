@@ -1,6 +1,7 @@
 # Contributing
 
-Thanks for your interest in Elastic GenAI SecOps. Issues and pull requests are welcome.
+Thanks for your interest in Elastic GenAI SecOps. The project is archived and no longer accepts
+issues or pull requests; fork it to continue the work. The notes below describe how it was built.
 
 ## Before you start
 

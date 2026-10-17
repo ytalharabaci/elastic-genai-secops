@@ -1,8 +1,10 @@
 # Roadmap
 
-What exists today, what is known to be missing, and the features planned next. Proposals are
-welcome as issues; keep the [design rules](#design-rules) in mind (masked LLM input, no automatic actions, Basic
-license only).
+> The project is archived and no longer maintained. This roadmap records the state at the last
+> version (v1.0.0). The planned features below were not built.
+
+What exists today, what is known to be missing, and the features planned next. Keep the
+[design rules](#design-rules) in mind (masked LLM input, no automatic actions, Basic license only).
 
 ## Design rules
 

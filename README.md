@@ -11,9 +11,11 @@ Logs are collected and parsed with Logstash and Beats, Elastic detection rules r
 correlated into incidents, personal data is masked, and an LLM suggests a triage decision that an
 analyst reviews. The LLM never acts on its own.
 
-> **Status:** early release. The SIEM, the AI triage pipeline, the MCP server and the outbound
-> integrations run end to end; see [ROADMAP.md](ROADMAP.md) for what is verified, known limitations
-> and planned features. The project consolidates three earlier projects (an Ubuntu ELK installer,
+> **Status:** archived, no longer maintained. The repository is read-only; issues, pull requests
+> and security fixes are no longer accepted. The last version is
+> [v1.0.0](https://github.com/yusufarbc/elastic-genai-secops/releases/tag/v1.0.0): the SIEM, the AI
+> triage pipeline, the MCP server and the outbound integrations run end to end. [ROADMAP.md](ROADMAP.md)
+> lists what was verified, the known limitations and the features that were planned but not built. The project consolidates three earlier projects (an Ubuntu ELK installer,
 > an MCP-based GenAI SOC prototype and an AI-SOC platform).
 
 ## Architecture
