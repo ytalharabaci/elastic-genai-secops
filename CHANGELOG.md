@@ -3,7 +3,10 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.0.0] - 2026-10-17
+
+Last version. The repository is archived after this release.
+
 
 First consolidated version of three earlier projects (an Ubuntu ELK installer, an MCP-based GenAI
 SOC prototype and an AI-SOC platform).
