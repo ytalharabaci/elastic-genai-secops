@@ -1,5 +1,5 @@
 # Build from the repository root: docker build -f services/llm-orchestrator/Dockerfile .
-FROM python:3.14-slim
+FROM python:3.15-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY libs/py-common /build/py-common
